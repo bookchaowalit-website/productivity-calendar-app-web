@@ -3,7 +3,7 @@ import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
 import { metadata } from "@/app/layout";
 
-vi.mock("next/font/google", () => ({ Inter: () => ({ variable: "font-inter" }) }));
+vi.mock("next/font/google", () => ({ Geist: () => ({ variable: "font-geist" }) }));
 
 describe("site metadata", () => {
   it("robots, sitemap and canonical use the app's own subdomain", () => {
@@ -18,7 +18,7 @@ describe("root layout", () => {
   it("puts the font variable on <html>", async () => {
     const { default: RootLayout } = await import("@/app/layout");
     const html = RootLayout({ children: null });
-    expect(html.props.className).toBe("font-inter");
+    expect(html.props.className).toBe("font-geist");
     expect(html.props.lang).toBe("en");
   });
 });

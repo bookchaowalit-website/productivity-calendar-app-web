@@ -4,7 +4,7 @@ Since 2026-11-18 Calendar uses the shared App shell (`APP-SHELL.md`, `app/app-sh
 of the other list-style apps, replacing the earlier "station departures board" theme (Sora, Roboto Mono, midnight
 enamel and amber).
 
-- Type and colour: Inter via `next/font`, `--as-*` tokens, light and dark from `prefers-color-scheme`.
+- Type and colour: Geist via `next/font` (as in the sibling App shell apps), `--as-*` tokens, light and dark from `prefers-color-scheme`.
 - Layout: top bar → month (title, event count, Prev / Today / Next, 7-column day grid, legend) beside the
   selected-day panel (heading, events or "Nothing planned", labelled composer) → local-only note → footer back to
   https://bookchaowalit.com/. Below 960px the panel stacks under the month; picking a day scrolls to the panel and

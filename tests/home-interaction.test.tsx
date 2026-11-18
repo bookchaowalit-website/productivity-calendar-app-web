@@ -172,3 +172,45 @@ describe("remove and undo", () => {
     expect($(".as-toast")).toBeNull();
   });
 });
+
+describe("review fixes (Codex, 2026-11-18)", () => {
+  it("two removals inside the Undo window are both restored, in their old order", () => {
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    type(field("Event title"), "Third");
+    press(button("Save event"));
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    press($('[aria-label="Remove Third"]')!, 0);
+    expect(rows()).toEqual(["Second"]);
+    expect($(".as-toast")!.textContent).toContain("Removed 2 events");
+    press(button("Undo"));
+    expect(rows()).toEqual(["Portfolio demo event", "Second", "Third"]);
+    expect(stored()!.map((e) => e.title)).toEqual(["Portfolio demo event", "Second", "Third"]);
+    expect(host.textContent).toContain("Restored 2 events.");
+  });
+
+  it("a removal after the toast expired starts a fresh Undo batch", () => {
+    vi.useFakeTimers();
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    press($('[aria-label="Remove Portfolio demo event"]')!, 1);
+    act(() => { vi.advanceTimersByTime(6000); });
+    press($('[aria-label="Remove Second"]')!, 1);
+    expect($(".as-toast")!.textContent).toContain("Removed “Second”");
+    press(button("Undo"));
+    expect(rows()).toEqual(["Second"]);
+  });
+
+  it("announces the selected day's events, or that nothing is planned, in the status region", () => {
+    const status = () => $('[role="status"]')!.textContent;
+    type(field("Event title"), "Dentist");
+    press(button("Save event"));
+    press(day("November 20, 2026"));
+    expect(status()).toBe("November 20, 2026: nothing planned");
+    press(day("November 18, 2026"));
+    expect(status()).toBe("November 18, 2026: 2 events: Portfolio demo event, Dentist");
+    press(day("November 20, 2026"));
+    press(button("Today"));
+    expect(status()).toBe("November 18, 2026: 2 events: Portfolio demo event, Dentist");
+  });
+});

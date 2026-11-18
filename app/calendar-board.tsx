@@ -29,7 +29,9 @@ export const STACKED_QUERY = "(max-width: 960px)";
 
 const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMedia?.(STACKED_QUERY).matches);
 
-type Removed = { event: CalEvent; index: number; viaKeyboard: boolean };
+// Every removal still inside the Undo window, oldest first. Undo restores them all, newest first, so each index
+// is the position the event had when it was removed.
+type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean };
 
 /** The month and the selected-day panel for a known local date ("YYYY-MM-DD"). */
 export function Board({ today }: { today: string }) {
@@ -71,8 +73,14 @@ export function Board({ today }: { today: string }) {
     return () => window.clearTimeout(timer);
   }, [removed, toastFocused]);
 
+  // Focus stays on the day button on wide screens, so say what the panel now shows.
+  function announceDay(key: string) {
+    const list = eventsOn(events, key);
+    setAnnouncement(`${longDateLabel(key)}: ${list.length ? `${eventCountLabel(list.length)}: ${list.map((event) => event.title).join(", ")}` : "nothing planned"}`);
+  }
   function select(key: string) {
     setSelected(key);
+    announceDay(key);
     if (isStacked()) setReveal((count) => count + 1);
   }
   function add(event: FormEvent<HTMLFormElement>) {
@@ -87,7 +95,7 @@ export function Board({ today }: { today: string }) {
   function remove(item: CalEvent, viaKeyboard: boolean) {
     const index = events.findIndex((event) => event.id === item.id);
     setEvents((current) => removeEvent(current, item.id));
-    setRemoved({ event: item, index, viaKeyboard });
+    setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard }));
     setAnnouncement(`Removed “${item.title}”. Undo is available for a few seconds.`);
   }
   function closeToast() {
@@ -97,13 +105,13 @@ export function Board({ today }: { today: string }) {
   }
   function undo() {
     if (!removed) return;
-    const { event, index } = removed;
-    setEvents((current) => restoreEvent(current, event, index));
-    setAnnouncement(`Restored “${event.title}”.`);
+    const { items } = removed;
+    setEvents((current) => items.reduceRight((list, { event, index }) => restoreEvent(list, event, index), current));
+    setAnnouncement(items.length === 1 ? `Restored “${items[0].event.title}”.` : `Restored ${eventCountLabel(items.length)}.`);
     closeToast();
   }
   const moveMonth = (delta: number) => setCursor((current) => shiftMonth(current, delta));
-  const goToday = () => { setCursor(monthOf(today)); setSelected(today); };
+  const goToday = () => { setCursor(monthOf(today)); setSelected(today); announceDay(today); };
 
   return (
     <>
@@ -193,7 +201,7 @@ export function Board({ today }: { today: string }) {
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
           onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
         >
-          <span>Removed “{removed.event.title}”</span>
+          <span>{removed.items.length === 1 ? `Removed “${removed.items[0].event.title}”` : `Removed ${eventCountLabel(removed.items.length)}`}</span>
           <button ref={undoRef} type="button" className="as-plain" onClick={undo}>Undo</button>
         </div>
       ) : null}

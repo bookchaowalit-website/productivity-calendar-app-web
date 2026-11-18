@@ -6,7 +6,7 @@ first visit shows one demo event on today's date.
 
 Live: https://calendar-app.bookchaowalit.com (Vercel Git deploy: a push to `main` deploys).
 
-The page uses the shared App shell (`APP-SHELL.md`): Inter, light and dark from the system setting, a month of
+The page uses the shared App shell (`APP-SHELL.md`): Geist, light and dark from the system setting, a month of
 day buttons beside the selected-day panel (stacked under it below 960px, where picking a day scrolls to the panel and
 focuses its heading). Removing an event shows an Undo toast for six seconds. No analytics.
 
