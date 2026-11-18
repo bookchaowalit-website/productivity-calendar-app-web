@@ -250,7 +250,8 @@ export function Board({ today }: { today: string }) {
                     <h3>{item.title}</h3>
                     {item.notes ? <p>{item.notes}</p> : null}
                   </div>
-                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onClick={(event) => remove(item, event.detail === 0)}>Remove</button>
+                  {/* Keyboard removals, and clicks that focused this button, hand focus to Undo: the button is about to go. */}
+                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onClick={(event) => remove(item, event.detail === 0 || document.activeElement === event.currentTarget)}>Remove</button>
                 </li>
               ))}
             </ul>

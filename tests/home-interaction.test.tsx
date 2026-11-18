@@ -174,6 +174,16 @@ describe("remove and undo", () => {
     expect($(".as-toast")).toBeNull();
   });
 
+  it("a click that focused Remove hands focus to Undo instead of losing it to the body", () => {
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;
+    act(() => { remove.focus(); }); // browsers that focus a button on click
+    press(remove, 1);
+    expect(remove.isConnected).toBe(false);
+    expect(document.activeElement).toBe(button("Undo"));
+  });
+
   it("puts Undo before the day's remaining events and composer in Tab order", () => {
     type(field("Event title"), "Second");
     press(button("Save event"));
