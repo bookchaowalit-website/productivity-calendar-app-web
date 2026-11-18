@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   STORAGE_KEY,
   WEEKDAYS,
@@ -89,7 +89,10 @@ export function Board({ today }: { today: string }) {
     element?.focus({ preventScroll: true });
     element?.scrollIntoView?.({ block: "nearest" });
   }, [focusTick]);
-  // Focus the app moves to Undo itself does not pause the countdown; only focus the person moves there does.
+  // Undo countdown model: it runs for six seconds from when the toast shows, and pauses while the
+  // mouse is over the toast or the person is working in it: focus they moved there (Tab or
+  // Shift+Tab back in) or any key they press inside it. Focus the app moves to Undo after a keyboard
+  // Remove does not pause it by itself. Leaving the toast restarts the full six seconds.
   const autoFocusingUndo = useRef(false);
   useEffect(() => {
     if (!removed?.viaKeyboard) return;
@@ -178,6 +181,11 @@ export function Board({ today }: { today: string }) {
     const onDay = [...items].reverse().find(({ event }) => event.date === selected);
     closeToast(onDay ? { to: "remove", id: onDay.event.id } : { to: "heading" });
   }
+  // A held Enter repeats keydown, and each repeat would click the button that now has focus: Remove
+  // moves focus to Undo and Undo back to Remove, so one long press could flip between them.
+  function ignoreHeldKey(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();
+  }
   const moveMonth = (delta: number) => setCursor((current) => shiftMonth(current, delta));
   const goToday = () => { setCursor(monthOf(today)); setSelected(today); announceDay(today); };
 
@@ -244,7 +252,10 @@ export function Board({ today }: { today: string }) {
               onMouseEnter={() => setToastHovered(true)}
               onMouseLeave={() => setToastHovered(false)}
               onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
-              onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") closeToast();
+                else if (!event.repeat) setToastFocused(true);
+              }}
             >
               <span>{removed.items.length === 1 ? `Removed “${removed.items[0].event.title}”` : `Removed ${eventCountLabel(removed.items.length)}`}</span>
               <button
@@ -252,6 +263,7 @@ export function Board({ today }: { today: string }) {
                 type="button"
                 className="as-plain"
                 aria-label={removed.items.length === 1 ? `Undo: restore ${removed.items[0].event.title}` : `Undo: restore ${eventCountLabel(removed.items.length)}`}
+                onKeyDown={ignoreHeldKey}
                 onClick={undo}
               >Undo</button>
             </div>
@@ -265,7 +277,7 @@ export function Board({ today }: { today: string }) {
                     {item.notes ? <p>{item.notes}</p> : null}
                   </div>
                   {/* Keyboard removals, and clicks that focused this button, hand focus to Undo: the button is about to go. */}
-                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onClick={(event) => remove(item, event.detail === 0 || document.activeElement === event.currentTarget)}>Remove</button>
+                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onKeyDown={ignoreHeldKey} onClick={(event) => remove(item, event.detail === 0 || document.activeElement === event.currentTarget)}>Remove</button>
                 </li>
               ))}
             </ul>

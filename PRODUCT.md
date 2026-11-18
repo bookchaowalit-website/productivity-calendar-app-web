@@ -33,6 +33,24 @@ device.
   from the portfolio card in the 2026-10 review).
 - No times, reminders, editing an existing event, sharing or sync. No analytics of any kind (Vercel Analytics and Speed Insights removed 2026-11-18, owner decision 2026-11-17).
 
+## Known limits
+
+Open review findings (Codex, 2026-11-19), accepted for now and not yet fixed:
+
+- After the Undo toast times out or is closed with Escape, the polite status region still holds the
+  "Undo is available" / "Undo restores …" message until the next announcement.
+- Day buttons are about 36px wide at a 320px viewport and 43.9px at 375px, under the 44px target in
+  APP-SHELL.md; the grid's padding and gaps would need to shrink on narrow screens.
+- On a stacked layout, jumping to a day applies the top-bar offset twice (`scroll-margin-top: 68px` on the
+  heading plus `scroll-padding-top: 64px` on `html`, 132px). On very short viewports (for example 400% zoom)
+  the heading can be partly cut off.
+- Each keystroke in the composer re-renders the board and re-formats the date labels of all 42 day cells
+  (about 1.3 to 2.6 ms per render in a Node measurement); the formatter or labels are not cached per month.
+- The held-Enter guard on Remove and Undo relies on `KeyboardEvent.repeat`; a browser that repeats clicks
+  without flagging the keydown as a repeat is not covered.
+- The Undo focus, countdown and toast-spacing behaviour is covered by happy-dom tests only; it has not been
+  checked by hand in a real browser or with a screen reader.
+
 ## Live URL and deploy state
 
 - Live: https://calendar-app.bookchaowalit.com (HTTP 200 on 2026-10-23).

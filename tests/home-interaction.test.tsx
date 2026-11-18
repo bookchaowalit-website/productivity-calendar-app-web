@@ -233,6 +233,55 @@ describe("remove and undo", () => {
     expect($(".as-toast")).toBeNull();
   });
 
+  it("a key pressed inside the toast after the auto-focus pauses the countdown", () => {
+    vi.useFakeTimers();
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    act(() => { vi.advanceTimersByTime(3000); });
+    act(() => { button("Undo").dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", bubbles: true })); });
+    act(() => { vi.advanceTimersByTime(10_000); });
+    expect($(".as-toast")).not.toBeNull();
+  });
+
+  it("a held key's repeats do not count as working in the toast", () => {
+    vi.useFakeTimers();
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    act(() => { button("Undo").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", repeat: true, bubbles: true })); });
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect($(".as-toast")).toBeNull();
+  });
+
+  it("Tab back into the toast pauses it; Shift+Tab out restarts the full six seconds", () => {
+    vi.useFakeTimers();
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    const back = $<HTMLButtonElement>(".as-back")!;
+    act(() => { button("Undo").dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true })); });
+    act(() => { back.focus(); }); // Shift+Tab lands on the control before Undo
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { button("Undo").focus(); }); // Tab back in
+    act(() => { vi.advanceTimersByTime(10_000); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { back.focus(); });
+    act(() => { vi.advanceTimersByTime(5999); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect($(".as-toast")).toBeNull();
+  });
+
+  it("a held Enter does not flip between Remove and Undo; a fresh press still works", () => {
+    const keydown = (el: Element, repeat: boolean) => {
+      const event = new KeyboardEvent("keydown", { key: "Enter", repeat, bubbles: true, cancelable: true });
+      act(() => { el.dispatchEvent(event); });
+      return event.defaultPrevented;
+    };
+    const remove = $('[aria-label="Remove Portfolio demo event"]')!;
+    expect(keydown(remove, true)).toBe(true);
+    expect(keydown(remove, false)).toBe(false);
+    press(remove, 0);
+    expect(keydown(button("Undo"), true)).toBe(true);
+    expect(keydown(button("Undo"), false)).toBe(false);
+  });
+
   it("keeps the toast while the person has moved focus into it, and restarts the countdown on leave", () => {
     vi.useFakeTimers();
     press($('[aria-label="Remove Portfolio demo event"]')!, 1); // a mouse removal: focus stays put
