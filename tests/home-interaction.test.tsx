@@ -214,3 +214,26 @@ describe("review fixes (Codex, 2026-11-18)", () => {
     expect(status()).toBe("November 18, 2026: 2 events: Portfolio demo event, Dentist");
   });
 });
+
+describe("review fixes (Codex round 2)", () => {
+  it("a batched removal announces the count and names Undo with it", () => {
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    expect(button("Undo").getAttribute("aria-label")).toBe("Undo: restore Portfolio demo event");
+    press($('[aria-label="Remove Second"]')!, 0);
+    expect($('[role="status"]')!.textContent).toBe("Removed 2 events. Undo restores both.");
+    expect(button("Undo").getAttribute("aria-label")).toBe("Undo: restore 2 events");
+  });
+
+  it("names three or more removals with 'all'", () => {
+    for (const title of ["B", "C"]) { type(field("Event title"), title); press(button("Save event")); }
+    for (const title of ["Portfolio demo event", "B", "C"]) press($(`[aria-label="Remove ${title}"]`)!, 0);
+    expect($('[role="status"]')!.textContent).toBe("Removed 3 events. Undo restores all 3.");
+  });
+
+  it("the skip link target is the main landmark", () => {
+    expect($('a.as-skip')!.getAttribute("href")).toBe("#main");
+    expect($("main#main")).not.toBeNull();
+  });
+});

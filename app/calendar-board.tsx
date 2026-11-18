@@ -95,8 +95,11 @@ export function Board({ today }: { today: string }) {
   function remove(item: CalEvent, viaKeyboard: boolean) {
     const index = events.findIndex((event) => event.id === item.id);
     setEvents((current) => removeEvent(current, item.id));
+    const count = (removed?.items.length ?? 0) + 1;
     setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard }));
-    setAnnouncement(`Removed “${item.title}”. Undo is available for a few seconds.`);
+    setAnnouncement(count === 1
+      ? `Removed “${item.title}”. Undo is available for a few seconds.`
+      : `Removed ${eventCountLabel(count)}. Undo restores ${count === 2 ? "both" : `all ${count}`}.`);
   }
   function closeToast() {
     setRemoved(null);
@@ -202,7 +205,13 @@ export function Board({ today }: { today: string }) {
           onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
         >
           <span>{removed.items.length === 1 ? `Removed “${removed.items[0].event.title}”` : `Removed ${eventCountLabel(removed.items.length)}`}</span>
-          <button ref={undoRef} type="button" className="as-plain" onClick={undo}>Undo</button>
+          <button
+            ref={undoRef}
+            type="button"
+            className="as-plain"
+            aria-label={removed.items.length === 1 ? `Undo: restore ${removed.items[0].event.title}` : `Undo: restore ${eventCountLabel(removed.items.length)}`}
+            onClick={undo}
+          >Undo</button>
         </div>
       ) : null}
     </>
