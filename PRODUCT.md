@@ -46,6 +46,12 @@ Open review findings (Codex, 2026-11-19), accepted for now and not yet fixed:
   the heading can be partly cut off.
 - Each keystroke in the composer re-renders the board and re-formats the date labels of all 42 day cells
   (about 1.3 to 2.6 ms per render in a Node measurement); the formatter or labels are not cached per month.
+- Undo cannot be set to a longer time or switched off ahead of a removal. The six-second countdown pauses
+  on hover, on focus the person moves into the toast, or on any key pressed there (a keyboard removal
+  announces "Press an arrow key to keep Undo open"); a screen-reader user who only listens still has six
+  seconds.
+- The Event title field is not marked `required`, and the disabled Save event button is skipped by Tab,
+  so a screen-reader user is not told directly that a title is needed to save.
 - The held-Enter guard on Remove and Undo relies on `KeyboardEvent.repeat`; a browser that repeats clicks
   without flagging the keydown as a repeat is not covered.
 - The Undo focus, countdown and toast-spacing behaviour is covered by happy-dom tests only; it has not been

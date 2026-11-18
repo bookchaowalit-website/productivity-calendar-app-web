@@ -242,6 +242,23 @@ describe("remove and undo", () => {
     expect($(".as-toast")).not.toBeNull();
   });
 
+  it("a keyboard removal says how to keep Undo open, and an arrow key does keep it open", () => {
+    vi.useFakeTimers();
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    expect($('[role="status"]')!.textContent).toBe("Removed “Portfolio demo event”. Undo is available for a few seconds. Press an arrow key to keep Undo open.");
+    act(() => { vi.advanceTimersByTime(5000); });
+    act(() => { button("Undo").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); });
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect($(".as-toast")).not.toBeNull();
+    press(button("Undo"));
+    expect(rows()).toEqual(["Portfolio demo event"]);
+  });
+
+  it("a mouse removal does not get the keyboard hint", () => {
+    press($('[aria-label="Remove Portfolio demo event"]')!, 1);
+    expect($('[role="status"]')!.textContent).toBe("Removed “Portfolio demo event”. Undo is available for a few seconds.");
+  });
+
   it("a held key's repeats do not count as working in the toast", () => {
     vi.useFakeTimers();
     press($('[aria-label="Remove Portfolio demo event"]')!, 0);
@@ -371,14 +388,14 @@ describe("review fixes (Codex round 2)", () => {
     press($('[aria-label="Remove Portfolio demo event"]')!, 0);
     expect(button("Undo").getAttribute("aria-label")).toBe("Undo: restore Portfolio demo event");
     press($('[aria-label="Remove Second"]')!, 0);
-    expect($('[role="status"]')!.textContent).toBe("Removed 2 events. Undo restores both.");
+    expect($('[role="status"]')!.textContent).toBe("Removed 2 events. Undo restores both. Press an arrow key to keep Undo open.");
     expect(button("Undo").getAttribute("aria-label")).toBe("Undo: restore 2 events");
   });
 
   it("names three or more removals with 'all'", () => {
     for (const title of ["B", "C"]) { type(field("Event title"), title); press(button("Save event")); }
     for (const title of ["Portfolio demo event", "B", "C"]) press($(`[aria-label="Remove ${title}"]`)!, 0);
-    expect($('[role="status"]')!.textContent).toBe("Removed 3 events. Undo restores all 3.");
+    expect($('[role="status"]')!.textContent).toBe("Removed 3 events. Undo restores all 3. Press an arrow key to keep Undo open.");
   });
 
   it("the skip link target is the main landmark", () => {

@@ -152,9 +152,12 @@ export function Board({ today }: { today: string }) {
     setEvents((current) => removeEvent(current, item.id));
     const count = (removed?.items.length ?? 0) + 1;
     setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard }));
-    setAnnouncement(count === 1
+    // Focus is now on Undo, so say how to stop the six-second countdown before the removal sticks:
+    // any key pressed in the toast pauses it (see the countdown model above).
+    const keepOpen = viaKeyboard ? " Press an arrow key to keep Undo open." : "";
+    setAnnouncement((count === 1
       ? `Removed “${item.title}”. Undo is available for a few seconds.`
-      : `Removed ${eventCountLabel(count)}. Undo restores ${count === 2 ? "both" : `all ${count}`}.`);
+      : `Removed ${eventCountLabel(count)}. Undo restores ${count === 2 ? "both" : `all ${count}`}.`) + keepOpen);
   }
   // Focus never goes to a text field here: on phones that would open the keyboard.
   function moveFocus(target: FocusTarget) {
