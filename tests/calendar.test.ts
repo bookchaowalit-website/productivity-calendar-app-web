@@ -95,3 +95,11 @@ describe("restoreEvent", () => {
     expect(restoreEvent([a, b], a, 0)).toEqual([a, b]);
   });
 });
+
+describe("monthDayLabel", () => {
+  it("formats a short month and day, and nothing for a bad key", async () => {
+    const { monthDayLabel } = await import("@/lib/calendar");
+    expect(monthDayLabel("2026-11-20")).toBe("November 20");
+    expect(monthDayLabel("2026-02-30")).toBe("");
+  });
+});

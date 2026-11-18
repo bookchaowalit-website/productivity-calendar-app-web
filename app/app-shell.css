@@ -207,10 +207,13 @@
 .as-panel .as-composer { margin-bottom: 0; }
 .as-panel .as-composer .as-button { justify-self: start; }
 .as-row-event { grid-template-columns: minmax(0, 1fr) auto; }
+/* Only where the panel sits under the month: a way back to the selected day (keyboard and screen readers). */
+.as-back { display: none; justify-self: start; margin: 0 0 -8px -12px; }
 .as-cal-boundary { width: min(1120px, 100%); margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px) 24px; }
 @media (max-width: 960px) {
   .as-cal { grid-template-columns: 1fr; }
   .as-panel { position: static; }
+  .as-back { display: inline-flex; }
 }
 @media (max-width: 760px) {
   .as-cal { padding-top: 16px; gap: 20px; }

@@ -10,6 +10,7 @@ import {
   eventCountLabel,
   eventsOn,
   longDateLabel,
+  monthDayLabel,
   monthLabel,
   monthMatrix,
   monthOf,
@@ -31,6 +32,8 @@ const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMed
 
 // Every removal still inside the Undo window, oldest first. Undo restores them all, newest first, so each index
 // is the position the event had when it was removed.
+type FocusTarget = { to: "remove"; id: string } | { to: "heading" } | { to: "day" };
+
 type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean };
 
 /** The month and the selected-day panel for a known local date ("YYYY-MM-DD"). */
@@ -48,7 +51,13 @@ export function Board({ today }: { today: string }) {
   const [announcement, setAnnouncement] = useState("");
   // Bumped when a day is picked on a stacked layout; the effect below then brings the panel into view.
   const [reveal, setReveal] = useState(0);
+  // Where focus goes after the next render: a restored event's Remove button, the day heading, or the selected day.
+  // Set in a handler, applied by the effect once the tick re-renders the board.
+  const focusTarget = useRef<FocusTarget | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
 
@@ -66,6 +75,17 @@ export function Board({ today }: { today: string }) {
     heading.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" });
     heading.focus({ preventScroll: true });
   }, [reveal]);
+  useEffect(() => {
+    const target = focusTarget.current;
+    if (!target) return;
+    focusTarget.current = null;
+    let element: HTMLElement | null | undefined;
+    if (target.to === "remove") element = panelRef.current?.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(target.id)}"]`);
+    else if (target.to === "day") element = gridRef.current?.querySelector<HTMLElement>('.as-day[aria-pressed="true"]');
+    element = element ?? headingRef.current;
+    element?.focus({ preventScroll: true });
+    element?.scrollIntoView?.({ block: "nearest" });
+  }, [focusTick]);
   useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
   useEffect(() => {
     if (!removed || toastFocused) return;
@@ -101,17 +121,29 @@ export function Board({ today }: { today: string }) {
       ? `Removed “${item.title}”. Undo is available for a few seconds.`
       : `Removed ${eventCountLabel(count)}. Undo restores ${count === 2 ? "both" : `all ${count}`}.`);
   }
-  function closeToast() {
+  // Focus never goes to a text field here: on phones that would open the keyboard.
+  function moveFocus(target: FocusTarget) {
+    focusTarget.current = target;
+    setFocusTick((tick) => tick + 1);
+  }
+  function closeToast(focus: FocusTarget = { to: "heading" }) {
     setRemoved(null);
     setToastFocused(false);
-    titleRef.current?.focus();
+    moveFocus(focus);
+  }
+  // Narrow screens: the panel sits under the month, so offer a way back to the selected day.
+  function backToDay() {
+    if (!monthMatrix(cursor).some((day) => ymd(day) === selected)) setCursor(monthOf(selected));
+    moveFocus({ to: "day" });
   }
   function undo() {
     if (!removed) return;
     const { items } = removed;
     setEvents((current) => items.reduceRight((list, { event, index }) => restoreEvent(list, event, index), current));
     setAnnouncement(items.length === 1 ? `Restored “${items[0].event.title}”.` : `Restored ${eventCountLabel(items.length)}.`);
-    closeToast();
+    // The most recently removed event that is on the day shown, else the day heading.
+    const onDay = [...items].reverse().find(({ event }) => event.date === selected);
+    closeToast(onDay ? { to: "remove", id: onDay.event.id } : { to: "heading" });
   }
   const moveMonth = (delta: number) => setCursor((current) => shiftMonth(current, delta));
   const goToday = () => { setCursor(monthOf(today)); setSelected(today); announceDay(today); };
@@ -133,12 +165,12 @@ export function Board({ today }: { today: string }) {
           </div>
           <div className="as-month">
             <div className="as-weekdays" aria-hidden="true">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
-            <div className="as-days">
+            <div className="as-days" ref={gridRef}>
               {cells.map((day) => {
                 const key = ymd(day);
                 const count = counts.get(key) ?? 0;
                 const isToday = key === today;
-                const label = `${longDateLabel(key)}${isToday ? ", today" : ""}${count ? `, ${eventCountLabel(count)}` : ""}`;
+                const label = `${weekdayLabel(key)}, ${longDateLabel(key)}${count ? `, ${eventCountLabel(count)}` : ""}${isToday ? ", today" : ""}`;
                 return (
                   <button
                     key={key}
@@ -160,7 +192,8 @@ export function Board({ today }: { today: string }) {
           <p className="as-note as-cal-legend">The number under a date is how many events it holds. Today has a blue ring.</p>
         </section>
 
-        <aside className="as-panel" aria-labelledby="day-heading">
+        <aside className="as-panel" aria-labelledby="day-heading" ref={panelRef}>
+          <button type="button" className="as-plain as-back" onClick={backToDay}>Back to {monthDayLabel(selected)}</button>
           <div className="as-panel-head">
             <h2 id="day-heading" ref={headingRef} tabIndex={-1}>{weekdayLabel(selected)}</h2>
             <p>{longDateLabel(selected)}</p>
@@ -173,7 +206,7 @@ export function Board({ today }: { today: string }) {
                     <h3>{item.title}</h3>
                     {item.notes ? <p>{item.notes}</p> : null}
                   </div>
-                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} onClick={(event) => remove(item, event.detail === 0)}>Remove</button>
+                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onClick={(event) => remove(item, event.detail === 0)}>Remove</button>
                 </li>
               ))}
             </ul>

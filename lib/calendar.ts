@@ -53,6 +53,11 @@ export function longDateLabel(key: string): string {
   return parseYmd(key)?.toLocaleDateString(LOCALE, { year: "numeric", month: "long", day: "numeric" }) ?? "";
 }
 
+/** "November 20": for short references such as the panel's Back button. */
+export function monthDayLabel(key: string): string {
+  return parseYmd(key)?.toLocaleDateString(LOCALE, { month: "long", day: "numeric" }) ?? "";
+}
+
 export function demoEvents(todayKey: string): CalEvent[] {
   return [{ id: "demo", date: todayKey, title: "Portfolio demo event", notes: "Click a day to add more." }];
 }

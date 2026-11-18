@@ -13,7 +13,7 @@ let root: Root;
 let host: HTMLDivElement;
 const $ = <T extends Element = HTMLElement>(selector: string) => host.querySelector(selector) as T | null;
 const button = (text: string, scope: ParentNode = host) => [...scope.querySelectorAll("button")].find((b) => b.textContent?.trim() === text) as HTMLButtonElement;
-const day = (label: string) => host.querySelector(`.as-day[aria-label^="${label}"]`) as HTMLButtonElement;
+const day = (label: string) => host.querySelector(`.as-day[aria-label*="${label}"]`) as HTMLButtonElement;
 const rows = () => [...host.querySelectorAll(".as-panel .as-row h3")].map((h) => h.textContent);
 const press = (el: Element, detail = 1) => act(() => { el.dispatchEvent(new MouseEvent("click", { bubbles: true, detail })); });
 function type(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
@@ -56,7 +56,7 @@ describe("month and day selection", () => {
     expect($("#day-heading")!.textContent).toBe("Wednesday");
     expect(rows()).toEqual(["Portfolio demo event"]);
     expect(day("November 18, 2026").getAttribute("aria-pressed")).toBe("true");
-    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("November 18, 2026, today, 1 event");
+    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("Wednesday, November 18, 2026, 1 event, today");
     expect([...host.querySelectorAll(".as-foot a")].map((a) => a.getAttribute("href"))).toContain("https://bookchaowalit.com/");
   });
 
@@ -117,7 +117,7 @@ describe("adding", () => {
     expect(rows()).toEqual(["Dentist"]);
     expect($(".as-panel .as-row p")!.textContent).toBe("Bring the card");
     expect(stored()!.map((e) => [e.date, e.title, e.notes])).toEqual([["2026-11-18", "Portfolio demo event", "Click a day to add more."], ["2026-11-20", "Dentist", "Bring the card"]]);
-    expect(day("November 20, 2026").getAttribute("aria-label")).toBe("November 20, 2026, 1 event");
+    expect(day("November 20, 2026").getAttribute("aria-label")).toBe("Friday, November 20, 2026, 1 event");
     expect(document.activeElement).toBe(field("Event title"));
     expect(field("Event title").value).toBe("");
     expect(host.textContent).toContain("Added “Dentist” on November 20, 2026.");
@@ -143,7 +143,7 @@ describe("remove and undo", () => {
     press(button("Undo"));
     expect(rows()).toEqual(["Portfolio demo event", "Second"]);
     expect(stored()!.map((e) => e.title)).toEqual(["Portfolio demo event", "Second"]);
-    expect(document.activeElement).toBe(field("Event title"));
+    expect(document.activeElement).toBe($('[aria-label="Remove Portfolio demo event"]'));
   });
 
   it("Escape dismisses without restoring; a mouse removal times out after six seconds", () => {
@@ -235,5 +235,49 @@ describe("review fixes (Codex round 2)", () => {
   it("the skip link target is the main landmark", () => {
     expect($('a.as-skip')!.getAttribute("href")).toBe("#main");
     expect($("main#main")).not.toBeNull();
+  });
+});
+
+describe("review fixes (Codex round 3)", () => {
+  it("day buttons name the weekday, the date, the count and today", () => {
+    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("Wednesday, November 18, 2026, 1 event, today");
+    expect(day("November 21, 2026").getAttribute("aria-label")).toBe("Saturday, November 21, 2026");
+  });
+
+  it("the panel's Back button returns focus to the selected day, switching back to its month if needed", () => {
+    act(() => root.unmount());
+    stubWidth(true);
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    mount();
+    press(day("November 20, 2026"));
+    expect(document.activeElement).toBe($("#day-heading"));
+    const back = button("Back to November 20");
+    expect(back).toBeTruthy();
+    press(back);
+    expect(document.activeElement).toBe(day("November 20, 2026"));
+    press(button("Next"));
+    press(button("Back to November 20"));
+    expect($("h1")!.textContent).toBe("November 2026");
+    expect(document.activeElement).toBe(day("November 20, 2026"));
+  });
+
+  it("Undo focuses the restored event's Remove button, never the title field", () => {
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    press($('[aria-label="Remove Second"]')!, 1);
+    press(button("Undo"));
+    expect(document.activeElement).toBe($('[aria-label="Remove Second"]'));
+    expect(document.activeElement).not.toBe(field("Event title"));
+  });
+
+  it("Undo focuses the day heading when the restored event is on another day; Escape does too", () => {
+    press($('[aria-label="Remove Portfolio demo event"]')!, 1);
+    press(day("November 20, 2026"));
+    press(button("Undo"));
+    expect(document.activeElement).toBe($("#day-heading"));
+    press(day("November 18, 2026"));
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    act(() => { $(".as-toast")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(document.activeElement).toBe($("#day-heading"));
   });
 });
