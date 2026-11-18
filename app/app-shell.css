@@ -192,6 +192,7 @@
 .as-day strong { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
 /* Back to the day scrolls a cell into view: keep it clear of the 52px sticky top bar. */
 .as-day { scroll-margin-top: 64px; scroll-margin-bottom: 16px; }
+.as-cal [data-event-id] { scroll-margin-top: 64px; scroll-margin-bottom: 16px; }
 .as-day:hover { background: var(--as-hover); }
 .as-day[data-outside="true"] strong { color: var(--as-muted); font-weight: 500; }
 .as-day[data-today="true"] { border: 2px solid var(--as-button); }
