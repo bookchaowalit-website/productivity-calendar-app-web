@@ -48,6 +48,8 @@ export function Board({ today }: { today: string }) {
   const [notes, setNotes] = useState("");
   const [removed, setRemoved] = useState<Removed | null>(null);
   const [toastFocused, setToastFocused] = useState(false);
+  // A mouse user aiming at Undo pauses the countdown just as focus does; leaving restarts it.
+  const [toastHovered, setToastHovered] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   // Bumped when a day is picked on a stacked layout; the effect below then brings the panel into view.
   const [reveal, setReveal] = useState(0);
@@ -88,10 +90,10 @@ export function Board({ today }: { today: string }) {
   }, [focusTick]);
   useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
   useEffect(() => {
-    if (!removed || toastFocused) return;
+    if (!removed || toastFocused || toastHovered) return;
     const timer = window.setTimeout(() => setRemoved(null), 6000);
     return () => window.clearTimeout(timer);
-  }, [removed, toastFocused]);
+  }, [removed, toastFocused, toastHovered]);
 
   // Focus stays on the day button on wide screens, so say what the panel now shows.
   function announceDay(key: string) {
@@ -129,6 +131,7 @@ export function Board({ today }: { today: string }) {
   function closeToast(focus: FocusTarget = { to: "heading" }) {
     setRemoved(null);
     setToastFocused(false);
+    setToastHovered(false);
     moveFocus(focus);
   }
   // Narrow screens: the panel sits under the month, so offer a way back to the selected day.
@@ -235,6 +238,8 @@ export function Board({ today }: { today: string }) {
           role="group"
           aria-label="Undo remove"
           onFocus={() => setToastFocused(true)}
+          onMouseEnter={() => setToastHovered(true)}
+          onMouseLeave={() => setToastHovered(false)}
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
           onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
         >

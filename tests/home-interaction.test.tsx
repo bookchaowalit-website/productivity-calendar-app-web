@@ -174,6 +174,34 @@ describe("remove and undo", () => {
 });
 
 describe("review fixes (Codex, 2026-11-18)", () => {
+  it("pauses the Undo countdown while the mouse is over the toast and restarts it on leave", () => {
+    vi.useFakeTimers();
+    press($('[aria-label="Remove Portfolio demo event"]')!, 1);
+    expect(document.activeElement?.textContent).not.toBe("Undo");
+    const toast = $(".as-toast")!;
+    act(() => { vi.advanceTimersByTime(4000); });
+    act(() => { toast.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body })); });
+    act(() => { vi.advanceTimersByTime(10000); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { toast.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body })); });
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect($(".as-toast")).toBeNull();
+  });
+
+  it("a hover left over from a closed toast does not pin the next one open", () => {
+    vi.useFakeTimers();
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    press($('[aria-label="Remove Portfolio demo event"]')!, 1);
+    act(() => { $(".as-toast")!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body })); });
+    press(button("Undo"), 1);
+    press($('[aria-label="Remove Second"]')!, 1);
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect($(".as-toast")).toBeNull();
+  });
+
   it("two removals inside the Undo window are both restored, in their old order", () => {
     type(field("Event title"), "Second");
     press(button("Save event"));
