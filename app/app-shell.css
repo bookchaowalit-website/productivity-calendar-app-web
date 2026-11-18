@@ -126,6 +126,9 @@
 .as-toast { position: fixed; left: 50%; bottom: 24px; z-index: 40; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 8px; padding: 4px 4px 4px 16px; border-radius: 980px; background: #1d1d1f; color: #f5f5f7; box-shadow: 0 8px 24px rgb(0 0 0 / 20%); font-size: 15px; transform: translateX(-50%); }
 .as-toast span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .as-toast .as-plain { flex: none; color: #64d2ff; }
+/* Set by the board while the toast shows: room to scroll the last links above it, and focus scrolling stops short of it. */
+html[data-toast] { scroll-padding-bottom: var(--as-toast-space, 92px); }
+html[data-toast] body { padding-bottom: var(--as-toast-space, 92px); }
 
 .as-note { margin: 16px 0 0; color: var(--as-muted); font-size: 14px; line-height: 1.6; }
 .as-foot { display: flex; flex-wrap: wrap; gap: 0 20px; width: min(1120px, 100%); margin: 0 auto; padding: 8px clamp(16px, 4vw, 32px) 32px; border-top: 1px solid var(--as-line); font-size: 14px; }

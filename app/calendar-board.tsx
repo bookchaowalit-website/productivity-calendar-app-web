@@ -62,6 +62,7 @@ export function Board({ today }: { today: string }) {
   const panelRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
+  const toastRef = useRef<HTMLDivElement>(null);
 
   const cells = monthMatrix(cursor);
   const counts = countByDate(events);
@@ -89,6 +90,20 @@ export function Board({ today }: { today: string }) {
     element?.scrollIntoView?.({ block: "nearest" });
   }, [focusTick]);
   useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
+  // While the toast shows, reserve its height (plus its 24px offset and a gap) at the page bottom,
+  // so the last links can scroll clear of it and focus scrolling keeps the focused link above it.
+  const toastShown = removed !== null;
+  useEffect(() => {
+    if (!toastShown) return;
+    const root = document.documentElement;
+    const height = toastRef.current?.getBoundingClientRect().height || 52;
+    root.style.setProperty("--as-toast-space", `${Math.ceil(height) + 24 + 16}px`);
+    root.setAttribute("data-toast", "");
+    return () => {
+      root.removeAttribute("data-toast");
+      root.style.removeProperty("--as-toast-space");
+    };
+  }, [toastShown]);
   useEffect(() => {
     if (!removed || toastFocused || toastHovered) return;
     const timer = window.setTimeout(() => setRemoved(null), 6000);
@@ -234,6 +249,7 @@ export function Board({ today }: { today: string }) {
       <p className="as-sr" role="status" aria-live="polite">{announcement}</p>
       {removed ? (
         <div
+          ref={toastRef}
           className="as-toast"
           role="group"
           aria-label="Undo remove"

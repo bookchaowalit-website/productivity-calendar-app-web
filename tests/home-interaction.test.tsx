@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -160,6 +161,21 @@ describe("remove and undo", () => {
     expect(document.activeElement?.textContent).not.toBe("Undo");
     act(() => { vi.advanceTimersByTime(6000); });
     expect($(".as-toast")).toBeNull();
+  });
+
+  it("reserves the toast's height at the page bottom while it shows, then gives it back", () => {
+    const html = document.documentElement;
+    expect(html.hasAttribute("data-toast")).toBe(false);
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    expect(html.hasAttribute("data-toast")).toBe(true);
+    // happy-dom has no layout, so the measured height falls back to the 52px toast: 52 + 24 + 16.
+    expect(html.style.getPropertyValue("--as-toast-space")).toBe("92px");
+    act(() => { $(".as-toast")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(html.hasAttribute("data-toast")).toBe(false);
+    expect(html.style.getPropertyValue("--as-toast-space")).toBe("");
+    const css = readFileSync("app/app-shell.css", "utf8");
+    expect(css).toMatch(/html\[data-toast\] \{ scroll-padding-bottom: var\(--as-toast-space/);
+    expect(css).toMatch(/html\[data-toast\] body \{ padding-bottom: var\(--as-toast-space/);
   });
 
   it("keeps the toast while it has focus", () => {
