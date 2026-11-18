@@ -228,3 +228,6 @@
   .as-panel .as-composer .as-button { width: 100%; }
   .as-row-event .as-plain { grid-column: 2; grid-row: 1; }
 }
+
+/* The top bar is sticky: keep skip-link targets and keyboard-focused controls clear of it when the page scrolls to them. */
+html { scroll-padding-top: 64px; scroll-padding-bottom: 16px; }
