@@ -52,7 +52,7 @@ Open review findings (Codex, 2026-11-19), accepted for now and not yet fixed:
   seconds.
 - The Event title field is not marked `required`, and the disabled Save event button is skipped by Tab,
   so a screen-reader user is not told directly that a title is needed to save.
-- The held-Enter guard on Remove and Undo relies on `KeyboardEvent.repeat`; a browser that repeats clicks
+- The held-Enter guard on Remove, Undo, Back to … and the day buttons relies on `KeyboardEvent.repeat`; a browser that repeats clicks
   without flagging the keydown as a repeat is not covered.
 - The Undo focus, countdown and toast-spacing behaviour is covered by happy-dom tests only; it has not been
   checked by hand in a real browser or with a screen reader.

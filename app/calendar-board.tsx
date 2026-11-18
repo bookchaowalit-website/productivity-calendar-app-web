@@ -185,7 +185,8 @@ export function Board({ today }: { today: string }) {
     closeToast(onDay ? { to: "remove", id: onDay.event.id } : { to: "heading" });
   }
   // A held Enter repeats keydown, and each repeat would click the button that now has focus: Remove
-  // moves focus to Undo and Undo back to Remove, so one long press could flip between them.
+  // moves focus to Undo and Undo back to Remove, so one long press could flip between them. The same
+  // holds for "Back to …" (focus moves to the day button) and a day button (focus moves to the panel).
   function ignoreHeldKey(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();
   }
@@ -224,6 +225,7 @@ export function Board({ today }: { today: string }) {
                     data-today={isToday ? "true" : undefined}
                     aria-pressed={key === selected}
                     aria-label={label}
+                    onKeyDown={ignoreHeldKey}
                     onClick={() => select(key)}
                   >
                     <strong>{day.getDate()}</strong>
@@ -242,7 +244,7 @@ export function Board({ today }: { today: string }) {
             <p>{longDateLabel(selected)}</p>
           </div>
           {/* After the heading in the DOM, so Tab from the focused heading reaches it next. */}
-          <button type="button" className="as-plain as-back" onClick={backToDay}>Back to {monthDayLabel(selected)}</button>
+          <button type="button" className="as-plain as-back" onKeyDown={ignoreHeldKey} onClick={backToDay}>Back to {monthDayLabel(selected)}</button>
           {/* The toast is fixed on screen, but sits here in the DOM: Tab from Undo goes on to this day's
               remaining events and the composer instead of jumping to the footer. */}
           {removed ? (

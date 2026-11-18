@@ -285,6 +285,20 @@ describe("remove and undo", () => {
     expect($(".as-toast")).toBeNull();
   });
 
+  it("a held Enter on Back to … or a day button cannot reopen the day panel; a fresh press still works", () => {
+    const keydown = (el: Element, repeat: boolean) => {
+      const event = new KeyboardEvent("keydown", { key: "Enter", repeat, bubbles: true, cancelable: true });
+      act(() => { el.dispatchEvent(event); });
+      return event.defaultPrevented;
+    };
+    const back = $<HTMLButtonElement>(".as-back")!;
+    expect(keydown(back, true)).toBe(true);
+    expect(keydown(back, false)).toBe(false);
+    const cell = day("November 20, 2026");
+    expect(keydown(cell, true)).toBe(true);
+    expect(keydown(cell, false)).toBe(false);
+  });
+
   it("a held Enter does not flip between Remove and Undo; a fresh press still works", () => {
     const keydown = (el: Element, repeat: boolean) => {
       const event = new KeyboardEvent("keydown", { key: "Enter", repeat, bubbles: true, cancelable: true });
