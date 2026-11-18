@@ -190,6 +190,8 @@
 .as-weekdays span { color: var(--as-muted); font-size: 12px; font-weight: 600; text-align: center; }
 .as-day { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; min-width: 0; min-height: 72px; padding: 8px 0 6px; border: 1px solid var(--as-field-line); border-radius: 12px; background: var(--as-bg); cursor: pointer; }
 .as-day strong { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+/* Back to the day scrolls a cell into view: keep it clear of the 52px sticky top bar. */
+.as-day { scroll-margin-top: 64px; scroll-margin-bottom: 16px; }
 .as-day:hover { background: var(--as-hover); }
 .as-day[data-outside="true"] strong { color: var(--as-muted); font-weight: 500; }
 .as-day[data-today="true"] { border: 2px solid var(--as-button); }
@@ -208,7 +210,7 @@
 .as-panel .as-composer .as-button { justify-self: start; }
 .as-row-event { grid-template-columns: minmax(0, 1fr) auto; }
 /* Only where the panel sits under the month: a way back to the selected day (keyboard and screen readers). */
-.as-back { display: none; justify-self: start; margin: 0 0 -8px -12px; }
+.as-back { display: none; justify-self: start; margin: -12px 0 -4px -12px; }
 .as-cal-boundary { width: min(1120px, 100%); margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px) 24px; }
 @media (max-width: 960px) {
   .as-cal { grid-template-columns: 1fr; }

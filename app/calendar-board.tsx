@@ -193,11 +193,12 @@ export function Board({ today }: { today: string }) {
         </section>
 
         <aside className="as-panel" aria-labelledby="day-heading" ref={panelRef}>
-          <button type="button" className="as-plain as-back" onClick={backToDay}>Back to {monthDayLabel(selected)}</button>
           <div className="as-panel-head">
             <h2 id="day-heading" ref={headingRef} tabIndex={-1}>{weekdayLabel(selected)}</h2>
             <p>{longDateLabel(selected)}</p>
           </div>
+          {/* After the heading in the DOM, so Tab from the focused heading reaches it next. */}
+          <button type="button" className="as-plain as-back" onClick={backToDay}>Back to {monthDayLabel(selected)}</button>
           {dayEvents.length ? (
             <ul className="as-list" aria-label={`Events on ${longDateLabel(selected)}`}>
               {dayEvents.map((item) => (

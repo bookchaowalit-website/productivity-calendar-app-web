@@ -253,6 +253,8 @@ describe("review fixes (Codex round 3)", () => {
     expect(document.activeElement).toBe($("#day-heading"));
     const back = button("Back to November 20");
     expect(back).toBeTruthy();
+    // Next in the DOM after the heading block, so Tab from the focused heading reaches it.
+    expect($("#day-heading")!.parentElement!.nextElementSibling).toBe(back);
     press(back);
     expect(document.activeElement).toBe(day("November 20, 2026"));
     press(button("Next"));
@@ -279,5 +281,13 @@ describe("review fixes (Codex round 3)", () => {
     press($('[aria-label="Remove Portfolio demo event"]')!, 0);
     act(() => { $(".as-toast")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
     expect(document.activeElement).toBe($("#day-heading"));
+  });
+});
+
+describe("review fixes (Codex round 4)", () => {
+  it("day cells keep clear of the sticky top bar when scrolled into view", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(`${process.cwd()}/app/app-shell.css`, "utf8");
+    expect(css).toMatch(/\.as-day \{ scroll-margin-top: 64px;/);
   });
 });
