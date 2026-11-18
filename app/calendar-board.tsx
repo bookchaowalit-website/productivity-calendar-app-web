@@ -32,7 +32,8 @@ const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMed
 
 // Every removal still inside the Undo window, oldest first. Undo restores them all, newest first, so each index
 // is the position the event had when it was removed.
-type FocusTarget = { to: "remove"; id: string } | { to: "heading" } | { to: "day" };
+// `scroll: false` keeps the page where the person left it (Undo expiring is not something they asked for).
+type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "day" }) & { scroll?: false };
 
 type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean };
 
@@ -87,7 +88,7 @@ export function Board({ today }: { today: string }) {
     else if (target.to === "day") element = gridRef.current?.querySelector<HTMLElement>('.as-day[aria-pressed="true"]');
     element = element ?? headingRef.current;
     element?.focus({ preventScroll: true });
-    element?.scrollIntoView?.({ block: "nearest" });
+    if (target.scroll !== false) element?.scrollIntoView?.({ block: "nearest" });
   }, [focusTick]);
   // Undo countdown model: it runs for six seconds from when the toast shows, and pauses while the
   // mouse is over the toast or the person is working in it: focus they moved there (Tab or
@@ -117,9 +118,10 @@ export function Board({ today }: { today: string }) {
   useEffect(() => {
     if (!removed || toastFocused || toastHovered) return;
     const timer = window.setTimeout(() => {
-      // Expiring with focus on Undo would drop it to <body>: hand it to the day heading instead.
+      // Expiring with focus on Undo would drop it to <body>: hand it to the day heading instead, without
+      // scrolling, so a person who scrolled back up to the month stays there.
       if (toastRef.current?.contains(document.activeElement)) {
-        focusTarget.current = { to: "heading" };
+        focusTarget.current = { to: "heading", scroll: false };
         setFocusTick((tick) => tick + 1);
       }
       setRemoved(null);

@@ -223,6 +223,24 @@ describe("remove and undo", () => {
     expect(document.activeElement).toBe($("#day-heading"));
   });
 
+  it("Undo expiring moves focus to the day heading without scrolling the page", () => {
+    vi.useFakeTimers();
+    const scrolled: Element[] = [];
+    const spy = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: Element) { scrolled.push(this); });
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;
+    act(() => { remove.focus(); });
+    press(remove, 1);
+    scrolled.length = 0;
+    focus.mockClear();
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect(document.activeElement).toBe($("#day-heading"));
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(scrolled).toEqual([]);
+    spy.mockRestore();
+    focus.mockRestore();
+  });
+
   it("a clicked Remove that hands focus to Undo still expires after six seconds", () => {
     vi.useFakeTimers();
     const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;
