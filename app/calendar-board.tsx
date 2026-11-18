@@ -89,7 +89,14 @@ export function Board({ today }: { today: string }) {
     element?.focus({ preventScroll: true });
     element?.scrollIntoView?.({ block: "nearest" });
   }, [focusTick]);
-  useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
+  // Focus the app moves to Undo itself does not pause the countdown; only focus the person moves there does.
+  const autoFocusingUndo = useRef(false);
+  useEffect(() => {
+    if (!removed?.viaKeyboard) return;
+    autoFocusingUndo.current = true;
+    undoRef.current?.focus();
+    autoFocusingUndo.current = false;
+  }, [removed]);
   // While the toast shows, reserve its height (plus its 24px offset and a gap) at the page bottom,
   // so the last links can scroll clear of it and focus scrolling keeps the focused link above it.
   const toastShown = removed !== null;
@@ -106,7 +113,14 @@ export function Board({ today }: { today: string }) {
   }, [toastShown]);
   useEffect(() => {
     if (!removed || toastFocused || toastHovered) return;
-    const timer = window.setTimeout(() => setRemoved(null), 6000);
+    const timer = window.setTimeout(() => {
+      // Expiring with focus on Undo would drop it to <body>: hand it to the day heading instead.
+      if (toastRef.current?.contains(document.activeElement)) {
+        focusTarget.current = { to: "heading" };
+        setFocusTick((tick) => tick + 1);
+      }
+      setRemoved(null);
+    }, 6000);
     return () => window.clearTimeout(timer);
   }, [removed, toastFocused, toastHovered]);
 
@@ -226,7 +240,7 @@ export function Board({ today }: { today: string }) {
               className="as-toast"
               role="group"
               aria-label="Undo remove"
-              onFocus={() => setToastFocused(true)}
+              onFocus={() => { if (!autoFocusingUndo.current) setToastFocused(true); }}
               onMouseEnter={() => setToastHovered(true)}
               onMouseLeave={() => setToastHovered(false)}
               onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}

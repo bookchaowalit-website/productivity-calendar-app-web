@@ -212,9 +212,31 @@ describe("remove and undo", () => {
     expect(css).toMatch(/html\[data-toast\] body \{ padding-bottom: var\(--as-toast-space/);
   });
 
-  it("keeps the toast while it has focus", () => {
+  it("Undo still expires after Remove moved focus there itself, and focus goes to the day heading", () => {
     vi.useFakeTimers();
     press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    expect(document.activeElement).toBe(button("Undo")); // the app's own focus move
+    act(() => { vi.advanceTimersByTime(5999); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect($(".as-toast")).toBeNull();
+    expect(document.activeElement).toBe($("#day-heading"));
+  });
+
+  it("a clicked Remove that hands focus to Undo still expires after six seconds", () => {
+    vi.useFakeTimers();
+    const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;
+    act(() => { remove.focus(); });
+    press(remove, 1);
+    expect(document.activeElement).toBe(button("Undo"));
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect($(".as-toast")).toBeNull();
+  });
+
+  it("keeps the toast while the person has moved focus into it, and restarts the countdown on leave", () => {
+    vi.useFakeTimers();
+    press($('[aria-label="Remove Portfolio demo event"]')!, 1); // a mouse removal: focus stays put
+    act(() => { button("Undo").focus(); }); // the person tabs to Undo
     act(() => { vi.advanceTimersByTime(7000); });
     expect($(".as-toast")).not.toBeNull();
     act(() => { (document.activeElement as HTMLElement).blur(); });
