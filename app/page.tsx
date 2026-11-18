@@ -1,18 +1,26 @@
 "use client";
 
 import { Board } from "@/app/calendar-board";
+import { AppFoot, AppTop } from "@/components/app-shell";
 import { useToday } from "@/lib/use-today";
 
 export default function Home() {
-  return <div className="station"><main className="station-shell">
-    <header className="station-header"><div><div className="station-code">CALENDAR / LOCAL LINE</div><h1>Make room for the days that matter.</h1><p className="station-intro">A single-month planning board for events that belong to your own rhythm. Nothing leaves this browser.</p></div><div className="station-status">LOCAL / BROWSER ONLY</div></header>
-    <CalendarWorkspace />
-    <footer className="station-footer">Local events are saved in localStorage on this origin only. This portfolio boundary is not a shared calendar or a multi-user service.</footer>
-  </main></div>;
-}
-
-function CalendarWorkspace() {
+  // The date is only known in the browser, so the prerendered HTML shows a waiting card instead of a month.
   const today = useToday();
-  if (!today) return <section className="board-layout" aria-label="Calendar workspace"><div className="calendar-board"><p className="empty-state">The calendar opens in your browser, on your local date.</p></div></section>;
-  return <Board today={today} />;
+  return (
+    <div className="as">
+      <a className="as-skip" href="#main">Skip to content</a>
+      <AppTop name="Calendar" tagline="Saved on this device · no sync" />
+      {today ? <Board today={today} /> : (
+        <main id="main" className="as-cal">
+          <section className="as-cal-month" aria-labelledby="month-heading">
+            <div className="as-head"><div><h1 id="month-heading">Calendar</h1><p>Loading your local date…</p></div></div>
+            <div className="as-list as-empty"><strong>Opening your month</strong>The calendar opens in your browser, on your local date.</div>
+          </section>
+        </main>
+      )}
+      <p className="as-note as-cal-boundary">Events are saved in this browser only. This is not a shared calendar: nothing is sent, synced or seen by anyone else.</p>
+      <AppFoot source="https://github.com/bookchaowalit-website/productivity-calendar-app-web" />
+    </div>
+  );
 }

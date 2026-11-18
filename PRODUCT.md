@@ -17,7 +17,9 @@ device.
 
 1. A Sunday-first 6x7 month grid with Prev / Today / Next; today and the selected day are marked; days with events
    show a count.
-2. The side panel shows the selected day and its events; add an event (title required, notes optional) or remove one.
+2. The side panel shows the selected day and its events, or an empty state; add an event (labelled title, required;
+   labelled notes, optional) or remove one (Undo for six seconds). On narrow screens picking a day scrolls to the
+   panel and focuses its heading.
 3. Events persist in this browser's localStorage. Corrupt, wrongly shaped or impossibly dated stored data is dropped
    instead of crashing the page. A first visit shows one demo event on today's date.
 4. The board renders in the browser on the visitor's local date, with en-US labels, so it no longer fails hydration
@@ -29,17 +31,14 @@ device.
 
 - No month/week/day views, drag-to-schedule, colour categories, recurrence or cross-project schedule (claims removed
   from the portfolio card in the 2026-10 review).
-- No times, reminders, editing an existing event, sharing or sync. No product analytics beyond Vercel Analytics.
+- No times, reminders, editing an existing event, sharing or sync. No analytics of any kind (Vercel Analytics and Speed Insights removed 2026-11-18, owner decision 2026-11-17).
 
 ## Live URL and deploy state
 
 - Live: https://calendar-app.bookchaowalit.com (HTTP 200 on 2026-10-23).
-- The Vercel project `bookchaowalit-calendar-app-frontend` is deployed only by CLI. Its last production deploy is
-  2026-10-08 01:38 UTC (CLI): the Next 16.4.2 security patch on `main` was not deployed yet because Vercel's daily
-  deployment quota ran out on 2026-10-23; the batch coordinator deploys the latest green `main` later. The Git link
-  names the old repository `bookchaowalit/bookchaowalit-calendar-app-frontend`, so a push to `main` does not deploy
-  (owner action D9). `NEXT_PUBLIC_SENTRY_DSN` is already set on the Vercel project (Sentry project
-  `productivity-calendar-app-web`, org `personal-yu0`).
+- The Vercel project `bookchaowalit-calendar-app-frontend` is Git-linked as of 2026-11: a push to `main` deploys
+  (the earlier CLI-only state and owner action D9 are closed). `NEXT_PUBLIC_SENTRY_DSN` is set on the Vercel project
+  (Sentry project `productivity-calendar-app-web`, org `personal-yu0`).
 
 ## Boundaries
 

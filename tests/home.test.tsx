@@ -3,15 +3,15 @@ import { describe, expect, it } from "vitest";
 import Home from "@/app/page";
 
 describe("home page", () => {
-  it("prerenders the shell without baking in a date, plus the local-only notice", () => {
+  it("prerenders the shell without baking in a date, plus the local-only notice and hub links", () => {
     // Regression: the build-time date and server locale were rendered into the static HTML, so a visitor on another
     // day or in another locale got a hydration mismatch. The board now renders only in the browser.
     const html = renderToString(<Home />);
-    expect(html).toContain("Make room for the days that matter.");
-    expect(html).toContain("LOCAL / BROWSER ONLY");
     expect(html).toContain("The calendar opens in your browser, on your local date.");
     expect(html).not.toMatch(/20\d\d-\d\d-\d\d|Portfolio demo event/);
-    expect(html).toContain("This portfolio boundary is not a shared calendar or a multi-user service.");
+    expect(html).toContain("This is not a shared calendar");
+    expect(html).toContain('href="https://bookchaowalit.com/"');
+    expect(html).not.toContain("more-projects");
   });
 });
 
@@ -23,8 +23,8 @@ describe("calendar board", () => {
     expect(html).toContain("Friday");
     expect(html).toContain("October 23, 2026");
     expect(html).toContain("Portfolio demo event");
-    expect(html).toContain('aria-pressed="true"><span class="day-number">23</span><span class="sr-only"> October 23, 2026</span>');
-    expect(html).toContain('<span class="cell-note"><span class="sr-only">, </span>1 event</span>');
-    expect(html).toContain("is-today");
+    expect(html).toContain('aria-pressed="true" aria-label="October 23, 2026, today, 1 event"');
+    expect(html).toContain('<span class="as-day-count" aria-hidden="true">1</span>');
+    expect(html).toContain('aria-label="Remove Portfolio demo event"');
   });
 });

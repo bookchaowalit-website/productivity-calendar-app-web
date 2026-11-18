@@ -98,3 +98,10 @@ export function removeEvent(events: CalEvent[], id: string): CalEvent[] {
 export function eventCountLabel(count: number): string {
   return `${count} event${count === 1 ? "" : "s"}`;
 }
+
+/** Put a removed event back at its old position (Undo). A no-op when an event with that id is already there. */
+export function restoreEvent(events: CalEvent[], event: CalEvent, index: number): CalEvent[] {
+  if (events.some((item) => item.id === event.id)) return events;
+  const at = Math.max(0, Math.min(index, events.length));
+  return [...events.slice(0, at), event, ...events.slice(at)];
+}

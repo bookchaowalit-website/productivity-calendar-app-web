@@ -84,3 +84,14 @@ describe("events", () => {
     expect(eventCountLabel(2)).toBe("2 events");
   });
 });
+
+describe("restoreEvent", () => {
+  it("puts an event back at its index, clamps the index and ignores duplicates", async () => {
+    const { restoreEvent } = await import("@/lib/calendar");
+    const a = { id: "a", date: "2026-11-18", title: "A", notes: "" };
+    const b = { id: "b", date: "2026-11-18", title: "B", notes: "" };
+    expect(restoreEvent([b], a, 0)).toEqual([a, b]);
+    expect(restoreEvent([b], a, 9)).toEqual([b, a]);
+    expect(restoreEvent([a, b], a, 0)).toEqual([a, b]);
+  });
+});

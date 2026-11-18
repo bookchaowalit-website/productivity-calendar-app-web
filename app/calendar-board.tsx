@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   STORAGE_KEY,
   WEEKDAYS,
@@ -15,6 +15,7 @@ import {
   monthOf,
   parseEvents,
   removeEvent,
+  restoreEvent,
   shiftMonth,
   weekdayLabel,
   ymd,
@@ -23,7 +24,14 @@ import {
 } from "@/lib/calendar";
 import { useStoredState } from "@/lib/use-stored-state";
 
-/** The month board and the selected-day panel for a known local date ("YYYY-MM-DD"). */
+/** Below this width the day panel sits under the month, so picking a day scrolls to it (app-shell.css). */
+export const STACKED_QUERY = "(max-width: 960px)";
+
+const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMedia?.(STACKED_QUERY).matches);
+
+type Removed = { event: CalEvent; index: number; viaKeyboard: boolean };
+
+/** The month and the selected-day panel for a known local date ("YYYY-MM-DD"). */
 export function Board({ today }: { today: string }) {
   const [cursor, setCursor] = useState<Month>(() => monthOf(today));
   const [selected, setSelected] = useState(today);
@@ -33,14 +41,162 @@ export function Board({ today }: { today: string }) {
   const setEvents = (update: (current: CalEvent[]) => CalEvent[]) => setStored((current) => update(current ?? demoEvents(today)));
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [removed, setRemoved] = useState<Removed | null>(null);
+  const [toastFocused, setToastFocused] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  // Bumped when a day is picked on a stacked layout; the effect below then brings the panel into view.
+  const [reveal, setReveal] = useState(0);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const undoRef = useRef<HTMLButtonElement>(null);
+
   const cells = monthMatrix(cursor);
   const counts = countByDate(events);
   const dayEvents = eventsOn(events, selected);
-  const addEvent = () => { if (!title.trim()) return; setEvents((current) => addToList(current, selected, title, notes, crypto.randomUUID())); setTitle(""); setNotes(""); };
+  const monthPrefix = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-`;
+  const monthCount = events.filter((event) => event.date.startsWith(monthPrefix)).length;
+
+  useEffect(() => {
+    if (!reveal) return;
+    const heading = headingRef.current;
+    if (!heading) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    heading.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" });
+    heading.focus({ preventScroll: true });
+  }, [reveal]);
+  useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
+  useEffect(() => {
+    if (!removed || toastFocused) return;
+    const timer = window.setTimeout(() => setRemoved(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [removed, toastFocused]);
+
+  function select(key: string) {
+    setSelected(key);
+    if (isStacked()) setReveal((count) => count + 1);
+  }
+  function add(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!title.trim()) return;
+    setEvents((current) => addToList(current, selected, title, notes, crypto.randomUUID()));
+    setAnnouncement(`Added “${title.trim()}” on ${longDateLabel(selected)}.`);
+    setTitle("");
+    setNotes("");
+    titleRef.current?.focus();
+  }
+  function remove(item: CalEvent, viaKeyboard: boolean) {
+    const index = events.findIndex((event) => event.id === item.id);
+    setEvents((current) => removeEvent(current, item.id));
+    setRemoved({ event: item, index, viaKeyboard });
+    setAnnouncement(`Removed “${item.title}”. Undo is available for a few seconds.`);
+  }
+  function closeToast() {
+    setRemoved(null);
+    setToastFocused(false);
+    titleRef.current?.focus();
+  }
+  function undo() {
+    if (!removed) return;
+    const { event, index } = removed;
+    setEvents((current) => restoreEvent(current, event, index));
+    setAnnouncement(`Restored “${event.title}”.`);
+    closeToast();
+  }
   const moveMonth = (delta: number) => setCursor((current) => shiftMonth(current, delta));
   const goToday = () => { setCursor(monthOf(today)); setSelected(today); };
-  return <section className="board-layout" aria-label="Calendar workspace">
-      <div className="calendar-board"><div className="board-toolbar"><h2>{monthLabel(cursor)}</h2><div className="board-buttons"><button className="board-button" type="button" onClick={() => moveMonth(-1)} aria-label="Prev month">Prev</button><button className="board-button" type="button" onClick={goToday}>Today</button><button className="board-button" type="button" onClick={() => moveMonth(1)} aria-label="Next month">Next</button></div></div><div className="weekday-row">{WEEKDAYS.map((day) => <span className="day-name" key={day}>{day}</span>)}</div><div className="day-grid">{cells.map((day) => { const key = ymd(day); const isSelected = key === selected; const isToday = key === today; const count = counts.get(key) ?? 0; return <button key={key} type="button" className={`day-cell ${day.getMonth() === cursor.month ? "" : "is-muted"} ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}`} onClick={() => setSelected(key)} aria-pressed={isSelected}><span className="day-number">{day.getDate()}</span><span className="sr-only">{` ${longDateLabel(key)}`}</span>{count > 0 ? <span className="cell-note"><span className="sr-only">, </span>{eventCountLabel(count)}</span> : null}{count > 0 ? <span className="event-tick" aria-hidden="true" /> : null}</button>; })}</div></div>
-      <aside className="dispatch-panel"><div className="dispatch-kicker">Dispatch / selected date</div><h2>{weekdayLabel(selected)}</h2><div className="dispatch-date">{longDateLabel(selected)}</div><div className="event-list" aria-live="polite">{dayEvents.length ? dayEvents.map((event) => <article className="event-line" key={event.id}><header><h3>{event.title}</h3><button className="delete-button" type="button" onClick={() => setEvents((current) => removeEvent(current, event.id))}>Remove</button></header>{event.notes ? <p>{event.notes}</p> : null}</article>) : <p className="empty-state">No departures yet. Add the first event below.</p>}</div><form className="add-event" onSubmit={(event) => { event.preventDefault(); addEvent(); }}><h3>Add to this date</h3><input className="field" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Event title" aria-label="Event title" /><textarea className="field" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes (optional)" aria-label="Event notes" rows={3} /><button className="dispatch-button" type="submit">Save event</button></form></aside>
-    </section>;
+
+  return (
+    <>
+      <main id="main" className="as-cal">
+        <section className="as-cal-month" aria-labelledby="month-heading">
+          <div className="as-head">
+            <div>
+              <h1 id="month-heading">{monthLabel(cursor)}</h1>
+              <p>{monthCount ? `${eventCountLabel(monthCount)} this month` : "No events this month"}</p>
+            </div>
+            <div className="as-tools as-cal-nav">
+              <button type="button" className="as-plain" onClick={() => moveMonth(-1)} aria-label="Previous month">Prev</button>
+              <button type="button" className="as-plain" onClick={goToday}>Today</button>
+              <button type="button" className="as-plain" onClick={() => moveMonth(1)} aria-label="Next month">Next</button>
+            </div>
+          </div>
+          <div className="as-month">
+            <div className="as-weekdays" aria-hidden="true">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
+            <div className="as-days">
+              {cells.map((day) => {
+                const key = ymd(day);
+                const count = counts.get(key) ?? 0;
+                const isToday = key === today;
+                const label = `${longDateLabel(key)}${isToday ? ", today" : ""}${count ? `, ${eventCountLabel(count)}` : ""}`;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className="as-day"
+                    data-outside={day.getMonth() === cursor.month ? undefined : "true"}
+                    data-today={isToday ? "true" : undefined}
+                    aria-pressed={key === selected}
+                    aria-label={label}
+                    onClick={() => select(key)}
+                  >
+                    <strong>{day.getDate()}</strong>
+                    {count ? <span className="as-day-count" aria-hidden="true">{count}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <p className="as-note as-cal-legend">The number under a date is how many events it holds. Today has a blue ring.</p>
+        </section>
+
+        <aside className="as-panel" aria-labelledby="day-heading">
+          <div className="as-panel-head">
+            <h2 id="day-heading" ref={headingRef} tabIndex={-1}>{weekdayLabel(selected)}</h2>
+            <p>{longDateLabel(selected)}</p>
+          </div>
+          {dayEvents.length ? (
+            <ul className="as-list" aria-label={`Events on ${longDateLabel(selected)}`}>
+              {dayEvents.map((item) => (
+                <li className="as-row as-row-event" key={item.id}>
+                  <div>
+                    <h3>{item.title}</h3>
+                    {item.notes ? <p>{item.notes}</p> : null}
+                  </div>
+                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} onClick={(event) => remove(item, event.detail === 0)}>Remove</button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="as-list as-empty">
+              <strong>Nothing planned</strong>Add the first event for this day below.
+            </div>
+          )}
+          <form className="as-composer" onSubmit={add} aria-label="Add an event to this day">
+            <label className="as-field">Event title
+              <input ref={titleRef} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What is happening?" autoComplete="off" />
+            </label>
+            <label className="as-field">Notes (optional)
+              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Place, people, anything to remember" rows={3} />
+            </label>
+            <button type="submit" className="as-button" disabled={!title.trim()}>Save event</button>
+          </form>
+        </aside>
+      </main>
+
+      <p className="as-sr" role="status" aria-live="polite">{announcement}</p>
+      {removed ? (
+        <div
+          className="as-toast"
+          role="group"
+          aria-label="Undo remove"
+          onFocus={() => setToastFocused(true)}
+          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
+          onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
+        >
+          <span>Removed “{removed.event.title}”</span>
+          <button ref={undoRef} type="button" className="as-plain" onClick={undo}>Undo</button>
+        </div>
+      ) : null}
+    </>
+  );
 }
