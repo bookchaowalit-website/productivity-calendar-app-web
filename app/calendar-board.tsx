@@ -124,7 +124,8 @@ export function Board({ today }: { today: string }) {
     event.preventDefault();
     if (!title.trim()) return;
     setEvents((current) => addToList(current, selected, title, notes, crypto.randomUUID()));
-    setAnnouncement(`Added “${title.trim()}” on ${longDateLabel(selected)}.`);
+    // The day's new count makes each confirmation differ, so a repeat save is still announced.
+    setAnnouncement(`Added “${title.trim()}” on ${longDateLabel(selected)}. ${eventCountLabel(dayEvents.length + 1)} that day.`);
     setTitle("");
     setNotes("");
     titleRef.current?.focus();
@@ -217,6 +218,30 @@ export function Board({ today }: { today: string }) {
           </div>
           {/* After the heading in the DOM, so Tab from the focused heading reaches it next. */}
           <button type="button" className="as-plain as-back" onClick={backToDay}>Back to {monthDayLabel(selected)}</button>
+          {/* The toast is fixed on screen, but sits here in the DOM: Tab from Undo goes on to this day's
+              remaining events and the composer instead of jumping to the footer. */}
+          {removed ? (
+            <div
+              ref={toastRef}
+              className="as-toast"
+              role="group"
+              aria-label="Undo remove"
+              onFocus={() => setToastFocused(true)}
+              onMouseEnter={() => setToastHovered(true)}
+              onMouseLeave={() => setToastHovered(false)}
+              onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
+              onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
+            >
+              <span>{removed.items.length === 1 ? `Removed “${removed.items[0].event.title}”` : `Removed ${eventCountLabel(removed.items.length)}`}</span>
+              <button
+                ref={undoRef}
+                type="button"
+                className="as-plain"
+                aria-label={removed.items.length === 1 ? `Undo: restore ${removed.items[0].event.title}` : `Undo: restore ${eventCountLabel(removed.items.length)}`}
+                onClick={undo}
+              >Undo</button>
+            </div>
+          ) : null}
           {dayEvents.length ? (
             <ul className="as-list" aria-label={`Events on ${longDateLabel(selected)}`}>
               {dayEvents.map((item) => (
@@ -247,28 +272,6 @@ export function Board({ today }: { today: string }) {
       </main>
 
       <p className="as-sr" role="status" aria-live="polite">{announcement}</p>
-      {removed ? (
-        <div
-          ref={toastRef}
-          className="as-toast"
-          role="group"
-          aria-label="Undo remove"
-          onFocus={() => setToastFocused(true)}
-          onMouseEnter={() => setToastHovered(true)}
-          onMouseLeave={() => setToastHovered(false)}
-          onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
-          onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
-        >
-          <span>{removed.items.length === 1 ? `Removed “${removed.items[0].event.title}”` : `Removed ${eventCountLabel(removed.items.length)}`}</span>
-          <button
-            ref={undoRef}
-            type="button"
-            className="as-plain"
-            aria-label={removed.items.length === 1 ? `Undo: restore ${removed.items[0].event.title}` : `Undo: restore ${eventCountLabel(removed.items.length)}`}
-            onClick={undo}
-          >Undo</button>
-        </div>
-      ) : null}
     </>
   );
 }

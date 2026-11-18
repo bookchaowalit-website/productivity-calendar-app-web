@@ -121,7 +121,18 @@ describe("adding", () => {
     expect(day("November 20, 2026").getAttribute("aria-label")).toBe("Friday, November 20, 2026, 1 event");
     expect(document.activeElement).toBe(field("Event title"));
     expect(field("Event title").value).toBe("");
-    expect(host.textContent).toContain("Added “Dentist” on November 20, 2026.");
+    expect(host.textContent).toContain("Added “Dentist” on November 20, 2026. 1 event that day.");
+  });
+
+  it("announces a repeat save of the same title again, with the new day count", () => {
+    const status = () => $('[role="status"]')!.textContent;
+    press(day("November 20, 2026"));
+    type(field("Event title"), "Gym");
+    press(button("Save event"));
+    expect(status()).toBe("Added “Gym” on November 20, 2026. 1 event that day.");
+    type(field("Event title"), "Gym");
+    press(button("Save event"));
+    expect(status()).toBe("Added “Gym” on November 20, 2026. 2 events that day.");
   });
 
   it("loads events saved by the previous version under the same key", () => {
@@ -161,6 +172,19 @@ describe("remove and undo", () => {
     expect(document.activeElement?.textContent).not.toBe("Undo");
     act(() => { vi.advanceTimersByTime(6000); });
     expect($(".as-toast")).toBeNull();
+  });
+
+  it("puts Undo before the day's remaining events and composer in Tab order", () => {
+    type(field("Event title"), "Second");
+    press(button("Save event"));
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    const panel = $(".as-panel")!;
+    const focusable = [...panel.querySelectorAll<HTMLElement>("button, input, textarea")].filter((el) => !(el as HTMLButtonElement).disabled);
+    const undo = button("Undo");
+    expect(panel.contains(undo)).toBe(true);
+    const after = focusable.slice(focusable.indexOf(undo) + 1);
+    expect(after[0]).toBe($('[aria-label="Remove Second"]'));
+    expect(after).toContain(field("Event title"));
   });
 
   it("reserves the toast's height at the page bottom while it shows, then gives it back", () => {
