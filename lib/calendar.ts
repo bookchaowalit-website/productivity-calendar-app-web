@@ -110,3 +110,37 @@ export function restoreEvent(events: CalEvent[], event: CalEvent, index: number)
   const at = Math.max(0, Math.min(index, events.length));
   return [...events.slice(0, at), event, ...events.slice(at)];
 }
+
+/** The title of the first event on each date (shown in wide day cells). */
+export function firstTitleByDate(events: CalEvent[]): Map<string, string> {
+  const titles = new Map<string, string>();
+  for (const event of events) if (!titles.has(event.date)) titles.set(event.date, event.title);
+  return titles;
+}
+
+/**
+ * Where a key press moves keyboard focus in the month grid (WAI-ARIA grid pattern): arrows by a day or a
+ * week, Home/End to the start/end of the week (Sunday-Saturday, as drawn), PageUp/PageDown by a month
+ * (the day is clamped, so Jan 31 + 1 month is Feb 28). Null for any other key.
+ */
+export function gridKeyTarget(key: string, from: string): string | null {
+  const date = parseYmd(from);
+  if (!date) return null;
+  const [y, m, d] = [date.getFullYear(), date.getMonth(), date.getDate()];
+  const byDays = (n: number) => ymd(new Date(y, m, d + n, 12));
+  const byMonths = (n: number) => {
+    const last = new Date(y, m + n + 1, 0, 12).getDate();
+    return ymd(new Date(y, m + n, Math.min(d, last), 12));
+  };
+  switch (key) {
+    case "ArrowLeft": return byDays(-1);
+    case "ArrowRight": return byDays(1);
+    case "ArrowUp": return byDays(-7);
+    case "ArrowDown": return byDays(7);
+    case "Home": return byDays(-date.getDay());
+    case "End": return byDays(6 - date.getDay());
+    case "PageUp": return byMonths(-1);
+    case "PageDown": return byMonths(1);
+    default: return null;
+  }
+}

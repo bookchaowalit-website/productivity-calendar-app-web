@@ -2,6 +2,7 @@
 
 import { Board } from "@/app/calendar-board";
 import { AppFoot, AppTop } from "@/components/app-shell";
+import { WEEKDAYS } from "@/lib/calendar";
 import { useToday } from "@/lib/use-today";
 
 export default function Home() {
@@ -12,11 +13,18 @@ export default function Home() {
       <a className="as-skip" href="#main">Skip to content</a>
       <AppTop name="Calendar" tagline="Saved on this device · no sync" />
       {today ? <Board today={today} /> : (
-        <main id="main" className="as-cal">
+        // Same footprint as the board (a 6 x 7 month and the day panel), so nothing jumps when it arrives.
+        <main id="main" className="as-cal" aria-busy="true">
           <section className="as-cal-month" aria-labelledby="month-heading">
-            <div className="as-head"><div><h1 id="month-heading">Calendar</h1><p>Loading your local date…</p></div></div>
-            <div className="as-list as-empty"><strong>Opening your month</strong>The calendar opens in your browser, on your local date.</div>
+            <div className="as-head"><div><h1 id="month-heading">Calendar</h1><p>Opening your month on your local date…</p></div></div>
+            <div className="as-month as-month-skeleton" aria-hidden="true">
+              <div className="as-weekdays">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
+              <div className="as-days">{Array.from({ length: 42 }, (_, index) => <span key={index} className="as-day" />)}</div>
+            </div>
+            <p className="as-note as-cal-legend">The calendar opens in your browser, on your local date.</p>
+            <noscript><p className="as-note">The calendar needs JavaScript: it runs in your browser so your events stay on this device.</p></noscript>
           </section>
+          <div className="as-panel as-panel-skeleton" aria-hidden="true" />
         </main>
       )}
       <p className="as-note as-cal-boundary">Events are saved in this browser only. This is not a shared calendar: nothing is sent, synced or seen by anyone else.</p>

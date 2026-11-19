@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addEvent,
+  firstTitleByDate,
+  gridKeyTarget,
   countByDate,
   demoEvents,
   eventCountLabel,
@@ -101,5 +103,24 @@ describe("monthDayLabel", () => {
     const { monthDayLabel } = await import("@/lib/calendar");
     expect(monthDayLabel("2026-11-20")).toBe("November 20");
     expect(monthDayLabel("2026-02-30")).toBe("");
+  });
+});
+
+describe("gridKeyTarget and firstTitleByDate (review 2026-11-18)", () => {
+  it("moves by day, week, week edge and month (clamped)", () => {
+    expect(gridKeyTarget("ArrowLeft", "2026-11-01")).toBe("2026-10-31");
+    expect(gridKeyTarget("ArrowRight", "2026-12-31")).toBe("2027-01-01");
+    expect(gridKeyTarget("ArrowUp", "2026-11-03")).toBe("2026-10-27");
+    expect(gridKeyTarget("ArrowDown", "2026-11-28")).toBe("2026-12-05");
+    expect(gridKeyTarget("Home", "2026-11-18")).toBe("2026-11-15");
+    expect(gridKeyTarget("End", "2026-11-18")).toBe("2026-11-21");
+    expect(gridKeyTarget("PageDown", "2027-01-31")).toBe("2027-02-28");
+    expect(gridKeyTarget("PageUp", "2024-03-31")).toBe("2024-02-29");
+    expect(gridKeyTarget("Enter", "2026-11-18")).toBeNull();
+    expect(gridKeyTarget("ArrowLeft", "bad")).toBeNull();
+  });
+  it("keeps the first title per date", () => {
+    const list = [{ id: "a", date: "2026-11-18", title: "First", notes: "" }, { id: "b", date: "2026-11-18", title: "Second", notes: "" }];
+    expect([...firstTitleByDate(list)]).toEqual([["2026-11-18", "First"]]);
   });
 });

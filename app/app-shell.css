@@ -234,3 +234,23 @@ html[data-toast] body { padding-bottom: var(--as-toast-space, 92px); }
 
 /* The top bar is sticky: keep skip-link targets and keyboard-focused controls clear of it when the page scrolls to them. */
 html { scroll-padding-top: 64px; scroll-padding-bottom: 16px; }
+
+/* Review 2026-11-18. */
+/* Phones keep the "Saved on this device · no sync" tagline, as a second line under the app name. */
+@media (max-width: 760px) {
+  .as-brand { flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.25; }
+  .as-brand small { display: block; font-size: 12px; }
+}
+/* Before the date is known the page draws an empty month and panel of the same size (no layout shift). */
+.as-month-skeleton .as-day { cursor: default; border-color: var(--as-line); }
+.as-panel-skeleton { min-height: 480px; }
+@media (max-width: 960px) { .as-panel-skeleton { min-height: 520px; } }
+/* Why Save event is not available yet (bound to the title field with aria-describedby). */
+.as-field-hint { margin: -6px 0 0; color: var(--as-muted); font-size: 13px; }
+/* Wide screens: the first event's title in the day cell (12px, --as-fg; white on the selected day). */
+.as-day-title { display: none; }
+@media (min-width: 961px) {
+  .as-day { padding-left: 6px; padding-right: 6px; }
+  .as-day-title { display: block; width: 100%; overflow: hidden; color: var(--as-fg); font-size: 12px; line-height: 1.3; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+  .as-day[aria-pressed="true"] .as-day-title { color: #ffffff; }
+}

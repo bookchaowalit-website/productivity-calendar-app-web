@@ -9,6 +9,8 @@ import {
   demoEvents,
   eventCountLabel,
   eventsOn,
+  firstTitleByDate,
+  gridKeyTarget,
   longDateLabel,
   monthDayLabel,
   monthLabel,
@@ -33,7 +35,7 @@ const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMed
 // Every removal still inside the Undo window, oldest first. Undo restores them all, newest first, so each index
 // is the position the event had when it was removed.
 // `scroll: false` keeps the page where the person left it (Undo expiring is not something they asked for).
-type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "day" }) & { scroll?: false };
+type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "day" } | { to: "cell"; key: string }) & { scroll?: false };
 
 type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean };
 
@@ -41,6 +43,8 @@ type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boole
 export function Board({ today }: { today: string }) {
   const [cursor, setCursor] = useState<Month>(() => monthOf(today));
   const [selected, setSelected] = useState(today);
+  // The day that holds the grid's single Tab stop (roving tabindex); arrow keys move it.
+  const [focusKey, setFocusKey] = useState(today);
   // null = nothing saved yet: show the demo event on today's date.
   const [stored, setStored] = useStoredState<CalEvent[] | null>(STORAGE_KEY, null, parseEvents);
   const events = stored ?? demoEvents(today);
@@ -67,6 +71,11 @@ export function Board({ today }: { today: string }) {
 
   const cells = monthMatrix(cursor);
   const counts = countByDate(events);
+  const firstTitles = firstTitleByDate(events);
+  // One Tab stop in the grid: the day arrow keys last reached, else the selected day, else the 1st, when shown.
+  const shown = new Set(cells.map(ymd));
+  const firstOfMonth = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-01`;
+  const tabKey = [focusKey, selected].find((key) => shown.has(key)) ?? firstOfMonth;
   const dayEvents = eventsOn(events, selected);
   const monthPrefix = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-`;
   const monthCount = events.filter((event) => event.date.startsWith(monthPrefix)).length;
@@ -86,6 +95,7 @@ export function Board({ today }: { today: string }) {
     let element: HTMLElement | null | undefined;
     if (target.to === "remove") element = panelRef.current?.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(target.id)}"]`);
     else if (target.to === "day") element = gridRef.current?.querySelector<HTMLElement>('.as-day[aria-pressed="true"]');
+    else if (target.to === "cell") element = gridRef.current?.querySelector<HTMLElement>(`.as-day[data-date="${target.key}"]`);
     element = element ?? headingRef.current;
     element?.focus({ preventScroll: true });
     if (target.scroll !== false) element?.scrollIntoView?.({ block: "nearest" });
@@ -136,6 +146,7 @@ export function Board({ today }: { today: string }) {
   }
   function select(key: string) {
     setSelected(key);
+    setFocusKey(key);
     announceDay(key);
     if (isStacked()) setReveal((count) => count + 1);
   }
@@ -192,6 +203,16 @@ export function Board({ today }: { today: string }) {
   function ignoreHeldKey(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();
   }
+  // Arrow keys, Home/End and PageUp/PageDown move focus between days (switching month at the edges);
+  // Enter or Space selects the focused day.
+  function moveGridFocus(event: KeyboardEvent<HTMLButtonElement>, from: string) {
+    const target = gridKeyTarget(event.key, from);
+    if (!target) return;
+    event.preventDefault();
+    if (!shown.has(target) || (event.key.startsWith("Page") && monthOf(target).month !== cursor.month)) setCursor(monthOf(target));
+    setFocusKey(target);
+    moveFocus({ to: "cell", key: target });
+  }
   const moveMonth = (delta: number) => setCursor((current) => shiftMonth(current, delta));
   const goToday = () => { setCursor(monthOf(today)); setSelected(today); announceDay(today); };
 
@@ -212,12 +233,13 @@ export function Board({ today }: { today: string }) {
           </div>
           <div className="as-month">
             <div className="as-weekdays" aria-hidden="true">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
-            <div className="as-days" ref={gridRef}>
+            <div className="as-days" ref={gridRef} role="group" aria-label={`Days of ${monthLabel(cursor)}`} aria-describedby="grid-keys">
               {cells.map((day) => {
                 const key = ymd(day);
                 const count = counts.get(key) ?? 0;
                 const isToday = key === today;
                 const label = `${weekdayLabel(key)}, ${longDateLabel(key)}${count ? `, ${eventCountLabel(count)}` : ""}${isToday ? ", today" : ""}`;
+                const firstTitle = firstTitles.get(key);
                 return (
                   <button
                     key={key}
@@ -227,17 +249,23 @@ export function Board({ today }: { today: string }) {
                     data-today={isToday ? "true" : undefined}
                     aria-pressed={key === selected}
                     aria-label={label}
-                    onKeyDown={ignoreHeldKey}
+                    data-date={key}
+                    tabIndex={key === tabKey ? 0 : -1}
+                    onKeyDown={(event) => { ignoreHeldKey(event); moveGridFocus(event, key); }}
+                    onFocus={() => setFocusKey(key)}
                     onClick={() => select(key)}
                   >
                     <strong>{day.getDate()}</strong>
                     {count ? <span className="as-day-count" aria-hidden="true">{count}</span> : null}
+                    {/* Wide screens (961px+) also show the first event's title; the label already counts the events. */}
+                    {firstTitle ? <span className="as-day-title" aria-hidden="true">{firstTitle}</span> : null}
                   </button>
                 );
               })}
             </div>
           </div>
           <p className="as-note as-cal-legend">The number under a date is how many events it holds. Today has a blue ring.</p>
+          <p className="as-sr" id="grid-keys">Arrow keys move between days, Page Up and Page Down change the month, Enter opens the day.</p>
         </section>
 
         <aside className="as-panel" aria-labelledby="day-heading" ref={panelRef}>
@@ -295,8 +323,10 @@ export function Board({ today }: { today: string }) {
           )}
           <form className="as-composer" onSubmit={add} aria-label="Add an event to this day">
             <label className="as-field">Event title
-              <input ref={titleRef} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What is happening?" autoComplete="off" />
+              <input ref={titleRef} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What is happening?" autoComplete="off" aria-required="true" aria-describedby="title-hint" />
             </label>
+            {/* Says why Save event is not available yet; it changes once a title is typed. */}
+            <p className="as-field-hint" id="title-hint">{title.trim() ? "Ready to save." : "Add a title to save."}</p>
             <label className="as-field">Notes (optional)
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Place, people, anything to remember" rows={3} />
             </label>

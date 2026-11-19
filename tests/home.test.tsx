@@ -8,6 +8,10 @@ describe("home page", () => {
     // day or in another locale got a hydration mismatch. The board now renders only in the browser.
     const html = renderToString(<Home />);
     expect(html).toContain("The calendar opens in your browser, on your local date.");
+    // A 6 x 7 skeleton month and a panel placeholder keep the footprint of the board (no layout shift).
+    expect(html.match(/<span class="as-day"><\/span>/g)).toHaveLength(42);
+    expect(html).toContain('class="as-panel as-panel-skeleton"');
+    expect(html).toContain("<noscript>");
     expect(html).not.toMatch(/20\d\d-\d\d-\d\d|Portfolio demo event/);
     expect(html).toContain("This is not a shared calendar");
     expect(html).toContain('href="https://bookchaowalit.com/"');

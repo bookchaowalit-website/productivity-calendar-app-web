@@ -489,3 +489,68 @@ describe("review fixes (Codex round 4)", () => {
     expect(css).toMatch(/\.as-day \{ scroll-margin-top: 64px;/);
   });
 });
+
+describe("review 2026-11-18", () => {
+  const key = (el: Element, k: string) => act(() => { el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); });
+  const tabStops = () => [...host.querySelectorAll<HTMLElement>(".as-day")].filter((d) => d.tabIndex === 0).map((d) => d.dataset.date);
+
+  it("the month grid has one Tab stop; arrows, Home/End and PageUp/PageDown move focus, Enter selects", () => {
+    expect(tabStops()).toEqual(["2026-11-18"]);
+    const start = day("November 18, 2026");
+    start.focus();
+    key(start, "ArrowRight");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-19");
+    expect(tabStops()).toEqual(["2026-11-19"]);
+    key(document.activeElement!, "ArrowDown");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-26");
+    key(document.activeElement!, "Home");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-22");
+    key(document.activeElement!, "End");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-28");
+    // Selection does not follow focus.
+    expect(day("November 18, 2026").getAttribute("aria-pressed")).toBe("true");
+    key(document.activeElement!, "PageDown");
+    expect($("h1")!.textContent).toBe("December 2026");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-12-28");
+    for (let i = 0; i < 4; i += 1) key(document.activeElement!, "ArrowUp");
+    // Nov 30 is drawn in December's first row, so the month stays.
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-30");
+    expect($("h1")!.textContent).toBe("December 2026");
+    key(document.activeElement!, "ArrowUp");
+    expect($("h1")!.textContent).toBe("November 2026");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-23");
+    key(document.activeElement!, "ArrowUp");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-16");
+    press(document.activeElement!, 0);
+    expect($("#day-heading")!.textContent).toBe("Monday");
+    expect(tabStops()).toEqual(["2026-11-16"]);
+    expect($(".as-days")!.getAttribute("aria-describedby")).toBe("grid-keys");
+  });
+
+  it("Next month moves the Tab stop to a shown day", () => {
+    press(button("Next"));
+    press(button("Next"));
+    expect(tabStops()).toEqual(["2027-01-01"]);
+  });
+
+  it("Save event explains why it is not available yet", () => {
+    const input = field("Event title");
+    expect(input.getAttribute("aria-required")).toBe("true");
+    expect($("#" + input.getAttribute("aria-describedby"))!.textContent).toBe("Add a title to save.");
+    type(input, "Lunch");
+    expect($("#title-hint")!.textContent).toBe("Ready to save.");
+  });
+
+  it("day cells carry the first event's title for wide screens", () => {
+    expect(day("November 18, 2026").querySelector(".as-day-title")!.textContent).toBe("Portfolio demo event");
+    expect(day("November 18, 2026").querySelector(".as-day-title")!.getAttribute("aria-hidden")).toBe("true");
+    const css = readFileSync("app/app-shell.css", "utf8");
+    expect(css).toMatch(/\.as-day-title \{ display: none; \}/);
+    expect(css).toMatch(/@media \(min-width: 961px\) \{[^@]*\.as-day-title \{ display: block;[^}]*font-size: 12px/);
+  });
+
+  it("phones keep the tagline as a second line under the app name", () => {
+    const css = readFileSync("app/app-shell.css", "utf8");
+    expect(css).toMatch(/\.as-brand small \{ display: block; font-size: 12px; \}/);
+  });
+});
