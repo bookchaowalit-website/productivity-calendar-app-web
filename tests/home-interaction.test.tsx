@@ -241,6 +241,36 @@ describe("remove and undo", () => {
     focus.mockRestore();
   });
 
+  it("Undo expiring hands focus to the removed event's on-screen neighbour, not an off-screen heading", () => {
+    for (const name of ["Alpha", "Beta"]) {
+      type(field("Event title"), name);
+      press(button("Save event"));
+    }
+    vi.useFakeTimers();
+    const rect = (top: number) => ({ top, bottom: top + 40, left: 0, right: 0, width: 0, height: 40, x: 0, y: top, toJSON() {} }) as DOMRect;
+    const heading = vi.spyOn($("#day-heading")!, "getBoundingClientRect").mockReturnValue(rect(-600)); // scrolled above
+    press($('[aria-label="Remove Beta"]')!, 0);
+    expect(document.activeElement).toBe(button("Undo"));
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect($(".as-toast")).toBeNull();
+    expect(document.activeElement).toBe($('[aria-label="Remove Alpha"]'));
+    heading.mockRestore();
+  });
+
+  it("with nothing on screen, an expiring Undo focuses the day heading and scrolls it into view", () => {
+    vi.useFakeTimers();
+    const rect = vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({ top: 5000, bottom: 5040, left: 0, right: 0, width: 0, height: 40, x: 0, y: 5000, toJSON() {} } as DOMRect);
+    const scrolled: Element[] = [];
+    const spy = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: Element) { scrolled.push(this); });
+    press($('[aria-label="Remove Portfolio demo event"]')!, 0);
+    scrolled.length = 0;
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect(document.activeElement).toBe($("#day-heading"));
+    expect(scrolled).toEqual([$("#day-heading")]);
+    rect.mockRestore();
+    spy.mockRestore();
+  });
+
   it("a clicked Remove that hands focus to Undo still expires after six seconds", () => {
     vi.useFakeTimers();
     const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;

@@ -35,10 +35,17 @@ const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMed
 // Every removal still inside the Undo window, oldest first. Undo restores them all, newest first, so each index
 // is the position the event had when it was removed.
 // `scroll: false` keeps the page where the person left it (Undo expiring is not something they asked for).
-type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "day" } | { to: "cell"; key: string }) & { scroll?: false };
+type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "day" } | { to: "cell"; key: string } | { to: "visible"; near: number }) & { scroll?: false };
 
 // `viaKeyboard` picks the spoken hint; `focusUndo` hands focus to Undo because the focused Remove button is going away.
-type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean; focusUndo: boolean };
+// `dayPos`: where the last removed event sat in the day's list, so an expiring Undo can hand focus to its neighbour.
+type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean; focusUndo: boolean; dayPos: number };
+
+/** Inside the viewport (a focus ring there is seen without scrolling). */
+function onScreen(element: Element): boolean {
+  const box = element.getBoundingClientRect();
+  return box.bottom >= 0 && box.top <= (window.innerHeight || document.documentElement.clientHeight);
+}
 
 /** The month and the selected-day panel for a known local date ("YYYY-MM-DD"). */
 export function Board({ today }: { today: string }) {
@@ -94,6 +101,18 @@ export function Board({ today }: { today: string }) {
     if (!target) return;
     focusTarget.current = null;
     let element: HTMLElement | null | undefined;
+    if (target.to === "visible") {
+      // Undo expired with focus in it: the nearest Remove button left in the day list (next, then earlier ones),
+      // then the day heading, then the selected day in the grid, whichever is on screen now. None on screen:
+      // the heading, scrolled into view, so focus is never somewhere the person cannot see.
+      const removes = [...(panelRef.current?.querySelectorAll<HTMLElement>("[data-event-id]") ?? [])];
+      const near = [...removes.slice(target.near), ...removes.slice(0, target.near).reverse()];
+      const day = gridRef.current?.querySelector<HTMLElement>('.as-day[aria-pressed="true"]');
+      const seen = [...near, headingRef.current, day].find((candidate): candidate is HTMLElement => Boolean(candidate && onScreen(candidate)));
+      (seen ?? headingRef.current)?.focus({ preventScroll: true });
+      if (!seen) headingRef.current?.scrollIntoView?.({ block: "nearest" });
+      return;
+    }
     if (target.to === "remove") element = panelRef.current?.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(target.id)}"]`);
     else if (target.to === "day") element = gridRef.current?.querySelector<HTMLElement>('.as-day[aria-pressed="true"]');
     else if (target.to === "cell") element = gridRef.current?.querySelector<HTMLElement>(`.as-day[data-date="${target.key}"]`);
@@ -129,10 +148,10 @@ export function Board({ today }: { today: string }) {
   useEffect(() => {
     if (!removed || toastFocused || toastHovered) return;
     const timer = window.setTimeout(() => {
-      // Expiring with focus on Undo would drop it to <body>: hand it to the day heading instead, without
-      // scrolling, so a person who scrolled back up to the month stays there.
+      // Expiring with focus on Undo would drop it to <body>: hand it to something on screen near where the person
+      // was (see the "visible" target), without scrolling when that is possible.
       if (toastRef.current?.contains(document.activeElement)) {
-        focusTarget.current = { to: "heading", scroll: false };
+        focusTarget.current = { to: "visible", near: removed.dayPos };
         setFocusTick((tick) => tick + 1);
       }
       setRemoved(null);
@@ -165,7 +184,8 @@ export function Board({ today }: { today: string }) {
     const index = events.findIndex((event) => event.id === item.id);
     setEvents((current) => removeEvent(current, item.id));
     const count = (removed?.items.length ?? 0) + 1;
-    setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard, focusUndo: viaKeyboard || focusUndo }));
+    const dayPos = Math.max(0, dayEvents.findIndex((event) => event.id === item.id));
+    setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard, focusUndo: viaKeyboard || focusUndo, dayPos }));
     // Focus is now on Undo, so say how to stop the six-second countdown before the removal sticks:
     // any key pressed in the toast pauses it (see the countdown model above).
     const keepOpen = viaKeyboard ? " Press an arrow key to keep Undo open." : "";
