@@ -223,10 +223,10 @@ describe("remove and undo", () => {
     expect(document.activeElement).toBe($("#day-heading"));
   });
 
-  it("Undo expiring moves focus to the day heading without scrolling the page", () => {
+  it("Undo expiring focuses the day heading without a jump: preventScroll, then only a 'nearest' scroll clear of the top bar", () => {
     vi.useFakeTimers();
-    const scrolled: Element[] = [];
-    const spy = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: Element) { scrolled.push(this); });
+    const scrolled: [Element, unknown][] = [];
+    const spy = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (this: Element, arg?: unknown) { scrolled.push([this, arg]); });
     const focus = vi.spyOn(HTMLElement.prototype, "focus");
     const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;
     act(() => { remove.focus(); });
@@ -236,9 +236,26 @@ describe("remove and undo", () => {
     act(() => { vi.advanceTimersByTime(6000); });
     expect(document.activeElement).toBe($("#day-heading"));
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
-    expect(scrolled).toEqual([]);
+    expect(scrolled).toEqual([[$("#day-heading"), { block: "nearest" }]]);
     spy.mockRestore();
     focus.mockRestore();
+  });
+
+  it("a neighbour hidden under the sticky top bar does not count as on screen", () => {
+    for (const name of ["Alpha", "Beta"]) {
+      type(field("Event title"), name);
+      press(button("Save event"));
+    }
+    vi.useFakeTimers();
+    const rect = (top: number) => ({ top, bottom: top + 40, left: 0, right: 0, width: 0, height: 40, x: 0, y: top, toJSON() {} }) as DOMRect;
+    const bar = vi.spyOn(document.querySelector(".as-top")!, "getBoundingClientRect").mockReturnValue(rect(0)); // bar: 0-40px
+    press($('[aria-label="Remove Beta"]')!, 0);
+    const alpha = vi.spyOn($('[aria-label="Remove Alpha"]')!, "getBoundingClientRect").mockReturnValue(rect(10)); // under the bar
+    const demo = vi.spyOn($('[aria-label="Remove Portfolio demo event"]')!, "getBoundingClientRect").mockReturnValue(rect(-60));
+    const heading = vi.spyOn($("#day-heading")!, "getBoundingClientRect").mockReturnValue(rect(-200));
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect(document.activeElement).not.toBe($('[aria-label="Remove Alpha"]'));
+    [bar, alpha, demo, heading].forEach((m) => m.mockRestore());
   });
 
   it("Undo expiring hands focus to the removed event's on-screen neighbour, not an off-screen heading", () => {

@@ -41,10 +41,11 @@ type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "da
 // `dayPos`: where the last removed event sat in the day's list, so an expiring Undo can hand focus to its neighbour.
 type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean; focusUndo: boolean; dayPos: number };
 
-/** Inside the viewport (a focus ring there is seen without scrolling). */
+/** Inside the viewport and below the sticky top bar (.as-top), so a focus ring there is seen without scrolling. */
 function onScreen(element: Element): boolean {
   const box = element.getBoundingClientRect();
-  return box.bottom >= 0 && box.top <= (window.innerHeight || document.documentElement.clientHeight);
+  const barBottom = document.querySelector(".as-top")?.getBoundingClientRect().bottom ?? 0;
+  return box.top >= barBottom && box.bottom <= (window.innerHeight || document.documentElement.clientHeight);
 }
 
 /** The month and the selected-day panel for a known local date ("YYYY-MM-DD"). */
@@ -109,8 +110,11 @@ export function Board({ today }: { today: string }) {
       const near = [...removes.slice(target.near), ...removes.slice(0, target.near).reverse()];
       const day = gridRef.current?.querySelector<HTMLElement>('.as-day[aria-pressed="true"]');
       const seen = [...near, headingRef.current, day].find((candidate): candidate is HTMLElement => Boolean(candidate && onScreen(candidate)));
-      (seen ?? headingRef.current)?.focus({ preventScroll: true });
-      if (!seen) headingRef.current?.scrollIntoView?.({ block: "nearest" });
+      const chosen = seen ?? headingRef.current;
+      chosen?.focus({ preventScroll: true });
+      // "nearest" with the page's scroll-padding (top bar height) moves only as far as needed to clear the bar,
+      // and not at all when the target is already in view.
+      chosen?.scrollIntoView?.({ block: "nearest" });
       return;
     }
     if (target.to === "remove") element = panelRef.current?.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(target.id)}"]`);
