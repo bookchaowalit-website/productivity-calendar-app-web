@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { scrubEvent, sentryOptions } from "@/lib/sentry";
 
@@ -102,4 +103,13 @@ test("strips quoted, parenthesised, punctuation-only and leading queries up to t
   assert.equal(glued.message, "Failed https://example.com/api");
   assert.equal(punctuation.message, "/search and /api and /search and (/x)");
   assert.ok(!/secret|!/.test(JSON.stringify([event, glued, punctuation])));
+});
+
+test("sends no release-health sessions, so nothing leaves the browser or server without an error", () => {
+  const options = sentryOptions("https://key@o0.ingest.sentry.io/1");
+  const names = options.integrations([{ name: "BrowserSession" }, { name: "ProcessSession" }, { name: "GlobalHandlers" }, { name: "Dedupe" }]).map((i) => i.name);
+  assert.deepEqual(names, ["GlobalHandlers", "Dedupe"]);
+  // The Node.js Http integration records a session per incoming request unless told not to.
+  const server = readFileSync(new URL("../instrumentation.ts", import.meta.url), "utf8");
+  assert.match(server, /httpIntegration\(\{ disableIncomingRequestSpans: true, sessions: false \}\)/);
 });

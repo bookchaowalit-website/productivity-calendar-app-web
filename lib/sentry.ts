@@ -99,6 +99,11 @@ export function scrubEvent<T extends ScrubbableEvent>(event: T): T {
   return event;
 }
 
+// Release-health sessions are usage data: the SDK sends one on every page load even when nothing failed.
+const SESSION_INTEGRATIONS = new Set(["BrowserSession", "ProcessSession"]);
+export const withoutSessions = <T extends { name: string }>(defaults: T[]) =>
+  defaults.filter((integration) => !SESSION_INTEGRATIONS.has(integration.name));
+
 export function sentryOptions(dsn: string | undefined) {
   return {
     dsn,
@@ -109,5 +114,6 @@ export function sentryOptions(dsn: string | undefined) {
     maxBreadcrumbs: 0,
     beforeSend: scrubEvent,
     beforeSendTransaction: () => null,
+    integrations: withoutSessions,
   };
 }

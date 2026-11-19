@@ -26,6 +26,7 @@ device.
    on a later day or in a non-English browser.
 5. `/api/mcp` answers JSON-RPC with `month_grid` (the same grid logic). It does not list events.
 6. Front-end and server errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
+   Release-health sessions are off in the browser and on the server, so a visit with no error sends nothing.
 
 ## What does not work (and must not be claimed)
 
