@@ -16,7 +16,13 @@ export default function Home() {
         // Same footprint as the board (a 6 x 7 month and the day panel), so nothing jumps when it arrives.
         <main id="main" className="as-cal" aria-busy="true">
           <section className="as-cal-month" aria-labelledby="month-heading">
-            <div className="as-head"><div><h1 id="month-heading">Calendar</h1><p>Opening your month on your local date…</p></div></div>
+            <div className="as-head">
+              <div><h1 id="month-heading">Calendar</h1><p>Opening your month on your local date…</p></div>
+              {/* Same row as the board's Prev / Today / Next (full width at 760px and below), so the grid does not jump. */}
+              <div className="as-tools as-cal-nav" aria-hidden="true">
+                {["Prev", "Today", "Next"].map((name) => <button key={name} type="button" className="as-plain" disabled tabIndex={-1}>{name}</button>)}
+              </div>
+            </div>
             <div className="as-month as-month-skeleton" aria-hidden="true">
               <div className="as-weekdays">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
               <div className="as-days">{Array.from({ length: 42 }, (_, index) => <span key={index} className="as-day" />)}</div>

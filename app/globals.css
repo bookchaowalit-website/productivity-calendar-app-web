@@ -2,3 +2,18 @@
 @import "./app-shell.css";
 
 html, body { margin: 0; background: var(--as-bg); }
+
+/* Calendar grid semantics (2026-11-19): role=row / role=gridcell wrappers take no box of their own,
+   so each day button stays a direct item of the shell's 7-column .as-days grid. */
+.cal-row, .cal-cell { display: contents; }
+
+/* Forced colors replace backgrounds and drop box-shadow, so the selected day would look like any
+   other day: paint it with the system Highlight pair, and keep today's ring as a CanvasText border. */
+@media (forced-colors: active) {
+  .as-day[data-today="true"] { border: 2px solid CanvasText; }
+  .as-day[aria-pressed="true"] { forced-color-adjust: none; border-color: Highlight; background: Highlight; color: HighlightText; }
+  .as-day[aria-pressed="true"] strong, .as-day[aria-pressed="true"] .as-day-title { color: HighlightText; }
+  .as-day[aria-pressed="true"] .as-day-count { background: HighlightText; color: Highlight; }
+  .as-day[aria-pressed="true"][data-today="true"] { border: 2px solid CanvasText; box-shadow: inset 0 0 0 2px HighlightText; }
+  .as-day:focus-visible { outline-color: CanvasText; }
+}

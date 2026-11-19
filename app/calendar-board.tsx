@@ -37,7 +37,8 @@ const isStacked = () => typeof window !== "undefined" && Boolean(window.matchMed
 // `scroll: false` keeps the page where the person left it (Undo expiring is not something they asked for).
 type FocusTarget = ({ to: "remove"; id: string } | { to: "heading" } | { to: "day" } | { to: "cell"; key: string }) & { scroll?: false };
 
-type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean };
+// `viaKeyboard` picks the spoken hint; `focusUndo` hands focus to Undo because the focused Remove button is going away.
+type Removed = { items: { event: CalEvent; index: number }[]; viaKeyboard: boolean; focusUndo: boolean };
 
 /** The month and the selected-day panel for a known local date ("YYYY-MM-DD"). */
 export function Board({ today }: { today: string }) {
@@ -106,7 +107,7 @@ export function Board({ today }: { today: string }) {
   // Remove does not pause it by itself. Leaving the toast restarts the full six seconds.
   const autoFocusingUndo = useRef(false);
   useEffect(() => {
-    if (!removed?.viaKeyboard) return;
+    if (!removed?.focusUndo) return;
     autoFocusingUndo.current = true;
     undoRef.current?.focus();
     autoFocusingUndo.current = false;
@@ -160,11 +161,11 @@ export function Board({ today }: { today: string }) {
     setNotes("");
     titleRef.current?.focus();
   }
-  function remove(item: CalEvent, viaKeyboard: boolean) {
+  function remove(item: CalEvent, viaKeyboard: boolean, focusUndo: boolean) {
     const index = events.findIndex((event) => event.id === item.id);
     setEvents((current) => removeEvent(current, item.id));
     const count = (removed?.items.length ?? 0) + 1;
-    setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard }));
+    setRemoved((current) => ({ items: [...(current?.items ?? []), { event: item, index }], viaKeyboard, focusUndo: viaKeyboard || focusUndo }));
     // Focus is now on Undo, so say how to stop the six-second countdown before the removal sticks:
     // any key pressed in the toast pauses it (see the countdown model above).
     const keepOpen = viaKeyboard ? " Press an arrow key to keep Undo open." : "";
@@ -206,6 +207,8 @@ export function Board({ today }: { today: string }) {
   // Arrow keys, Home/End and PageUp/PageDown move focus between days (switching month at the edges);
   // Enter or Space selects the focused day.
   function moveGridFocus(event: KeyboardEvent<HTMLButtonElement>, from: string) {
+    // Ctrl/Cmd/Alt + Home/End (and other modified keys) stay with the browser, e.g. top or bottom of the page.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const target = gridKeyTarget(event.key, from);
     if (!target) return;
     event.preventDefault();
@@ -214,7 +217,9 @@ export function Board({ today }: { today: string }) {
     moveFocus({ to: "cell", key: target });
   }
   const moveMonth = (delta: number) => setCursor((current) => shiftMonth(current, delta));
-  const goToday = () => { setCursor(monthOf(today)); setSelected(today); announceDay(today); };
+  // Today also takes the grid's Tab stop, so Tab back into the month lands on today, not an older arrow-key spot.
+  const goToday = () => { setCursor(monthOf(today)); setSelected(today); setFocusKey(today); announceDay(today); };
+  const weeks = Array.from({ length: Math.ceil(cells.length / 7) }, (_, row) => cells.slice(row * 7, row * 7 + 7));
 
   return (
     <>
@@ -233,35 +238,45 @@ export function Board({ today }: { today: string }) {
           </div>
           <div className="as-month">
             <div className="as-weekdays" aria-hidden="true">{WEEKDAYS.map((day) => <span key={day}>{day}</span>)}</div>
-            <div className="as-days" ref={gridRef} role="group" aria-label={`Days of ${monthLabel(cursor)}`} aria-describedby="grid-keys">
-              {cells.map((day) => {
-                const key = ymd(day);
-                const count = counts.get(key) ?? 0;
-                const isToday = key === today;
-                const label = `${weekdayLabel(key)}, ${longDateLabel(key)}${count ? `, ${eventCountLabel(count)}` : ""}${isToday ? ", today" : ""}`;
-                const firstTitle = firstTitles.get(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className="as-day"
-                    data-outside={day.getMonth() === cursor.month ? undefined : "true"}
-                    data-today={isToday ? "true" : undefined}
-                    aria-pressed={key === selected}
-                    aria-label={label}
-                    data-date={key}
-                    tabIndex={key === tabKey ? 0 : -1}
-                    onKeyDown={(event) => { ignoreHeldKey(event); moveGridFocus(event, key); }}
-                    onFocus={() => setFocusKey(key)}
-                    onClick={() => select(key)}
-                  >
-                    <strong>{day.getDate()}</strong>
-                    {count ? <span className="as-day-count" aria-hidden="true">{count}</span> : null}
-                    {/* Wide screens (961px+) also show the first event's title; the label already counts the events. */}
-                    {firstTitle ? <span className="as-day-title" aria-hidden="true">{firstTitle}</span> : null}
-                  </button>
-                );
-              })}
+            {/* A grid (rows of gridcells) so screen readers switch to focus mode and pass arrow keys to it.
+                The rows and cells use display: contents (globals.css), so the 7-column layout is unchanged. */}
+            <div className="as-days" ref={gridRef} role="grid" aria-label={`Days of ${monthLabel(cursor)}`} aria-describedby="grid-keys">
+              <div role="row" className="as-sr">
+                {WEEKDAYS.map((name, column) => <span role="columnheader" key={name} aria-label={weekdayLabel(ymd(cells[column]))}>{name}</span>)}
+              </div>
+              {weeks.map((week) => (
+                <div role="row" className="cal-row" key={ymd(week[0])}>
+                  {week.map((day) => {
+                    const key = ymd(day);
+                    const count = counts.get(key) ?? 0;
+                    const isToday = key === today;
+                    const label = `${weekdayLabel(key)}, ${longDateLabel(key)}${count ? `, ${eventCountLabel(count)}` : ""}${isToday ? ", today" : ""}`;
+                    const firstTitle = firstTitles.get(key);
+                    return (
+                      <div role="gridcell" className="cal-cell" key={key} aria-selected={key === selected}>
+                        <button
+                          type="button"
+                          className="as-day"
+                          data-outside={day.getMonth() === cursor.month ? undefined : "true"}
+                          data-today={isToday ? "true" : undefined}
+                          aria-pressed={key === selected}
+                          aria-label={label}
+                          data-date={key}
+                          tabIndex={key === tabKey ? 0 : -1}
+                          onKeyDown={(event) => { ignoreHeldKey(event); moveGridFocus(event, key); }}
+                          onFocus={() => setFocusKey(key)}
+                          onClick={() => select(key)}
+                        >
+                          <strong>{day.getDate()}</strong>
+                          {count ? <span className="as-day-count" aria-hidden="true">{count}</span> : null}
+                          {/* Wide screens (961px+) also show the first event's title; the label already counts the events. */}
+                          {firstTitle ? <span className="as-day-title" aria-hidden="true">{firstTitle}</span> : null}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
           <p className="as-note as-cal-legend">The number under a date is how many events it holds. Today has a blue ring.</p>
@@ -312,7 +327,7 @@ export function Board({ today }: { today: string }) {
                     {item.notes ? <p>{item.notes}</p> : null}
                   </div>
                   {/* Keyboard removals, and clicks that focused this button, hand focus to Undo: the button is about to go. */}
-                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onKeyDown={ignoreHeldKey} onClick={(event) => remove(item, event.detail === 0 || document.activeElement === event.currentTarget)}>Remove</button>
+                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${item.title}`} data-event-id={item.id} onKeyDown={ignoreHeldKey} onClick={(event) => remove(item, event.detail === 0, document.activeElement === event.currentTarget)}>Remove</button>
                 </li>
               ))}
             </ul>

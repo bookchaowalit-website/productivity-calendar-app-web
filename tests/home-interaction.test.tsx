@@ -554,3 +554,70 @@ describe("review 2026-11-18", () => {
     expect(css).toMatch(/\.as-brand small \{ display: block; font-size: 12px; \}/);
   });
 });
+
+describe("deferred review 2026-11-19", () => {
+  const tabStops = () => [...host.querySelectorAll<HTMLElement>(".as-day")].filter((d) => d.tabIndex === 0).map((d) => d.dataset.date);
+  const keydown = (el: Element, init: KeyboardEventInit) => {
+    const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+    act(() => { el.dispatchEvent(event); });
+    return event;
+  };
+
+  it("the month is a grid of rows and gridcells with weekday column headers", () => {
+    const grid = $('[role="grid"]')!;
+    expect(grid.getAttribute("aria-label")).toBe("Days of November 2026");
+    const rowsEls = [...grid.querySelectorAll(':scope > [role="row"]')];
+    expect(rowsEls).toHaveLength(7); // header row + 6 weeks
+    expect([...rowsEls[0].querySelectorAll('[role="columnheader"]')].map((h) => h.getAttribute("aria-label"))).toEqual(
+      ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    );
+    for (const row of rowsEls.slice(1)) {
+      const cellsInRow = [...row.children];
+      expect(cellsInRow).toHaveLength(7);
+      for (const cell of cellsInRow) {
+        expect(cell.getAttribute("role")).toBe("gridcell");
+        expect(cell.querySelector(".as-day")).not.toBeNull();
+      }
+    }
+    expect(day("November 18, 2026").closest('[role="gridcell"]')!.getAttribute("aria-selected")).toBe("true");
+    expect(day("November 19, 2026").closest('[role="gridcell"]')!.getAttribute("aria-selected")).toBe("false");
+    // The wrappers take no box, so the day buttons stay items of the 7-column grid.
+    expect(readFileSync("app/globals.css", "utf8")).toMatch(/\.cal-row, \.cal-cell \{ display: contents; \}/);
+  });
+
+  it("Today moves the grid's Tab stop back to today", () => {
+    keydown(day("November 18, 2026"), { key: "ArrowRight" });
+    expect(tabStops()).toEqual(["2026-11-19"]);
+    press(button("Today"));
+    expect(tabStops()).toEqual(["2026-11-18"]);
+    // From another month as well.
+    press(button("Next"));
+    keydown(host.querySelector<HTMLElement>('.as-day[tabindex="0"]')!, { key: "ArrowRight" });
+    press(button("Today"));
+    expect(tabStops()).toEqual(["2026-11-18"]);
+  });
+
+  it("the selected day keeps a system-colour fill in forced-colors mode", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    const block = css.slice(css.indexOf("@media (forced-colors: active)"));
+    expect(block).toMatch(/\.as-day\[aria-pressed="true"\] \{ forced-color-adjust: none; border-color: Highlight; background: Highlight; color: HighlightText; \}/);
+    expect(block).toMatch(/\.as-day\[data-today="true"\] \{ border: 2px solid CanvasText; \}/);
+  });
+
+  it("Ctrl/Cmd + Home and End are left to the browser", () => {
+    const start = day("November 18, 2026");
+    expect(keydown(start, { key: "Home", ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(keydown(start, { key: "End", metaKey: true }).defaultPrevented).toBe(false);
+    expect(tabStops()).toEqual(["2026-11-18"]);
+    expect(keydown(start, { key: "Home" }).defaultPrevented).toBe(true);
+    expect(tabStops()).toEqual(["2026-11-15"]);
+  });
+
+  it("a mouse click on a focused Remove hands focus to Undo without the keyboard hint", () => {
+    const remove = $<HTMLButtonElement>('[aria-label="Remove Portfolio demo event"]')!;
+    act(() => { remove.focus(); }); // Chrome focuses a button on click
+    press(remove, 1);
+    expect($('[role="status"]')!.textContent).toBe("Removed “Portfolio demo event”. Undo is available for a few seconds.");
+    expect(document.activeElement).toBe(button("Undo"));
+  });
+});

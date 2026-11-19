@@ -11,6 +11,8 @@ describe("home page", () => {
     // A 6 x 7 skeleton month and a panel placeholder keep the footprint of the board (no layout shift).
     expect(html.match(/<span class="as-day"><\/span>/g)).toHaveLength(42);
     expect(html).toContain('class="as-panel as-panel-skeleton"');
+    // The month nav row is reserved too (it wraps to its own full-width row at 760px and below).
+    expect(html).toMatch(/<div class="as-tools as-cal-nav" aria-hidden="true">(<button[^>]*disabled[^>]*tabindex="-1"[^>]*>(Prev|Today|Next)<\/button>){3}<\/div>/);
     expect(html).toContain("<noscript>");
     expect(html).not.toMatch(/20\d\d-\d\d-\d\d|Portfolio demo event/);
     expect(html).toContain("This is not a shared calendar");
