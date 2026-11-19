@@ -29,7 +29,7 @@ describe("calendar board", () => {
     expect(html).toContain("Friday");
     expect(html).toContain("October 23, 2026");
     expect(html).toContain("Portfolio demo event");
-    expect(html).toContain('aria-pressed="true" aria-label="Friday, October 23, 2026, 1 event, today"');
+    expect(html).toContain('aria-pressed="true" aria-label="Friday, October 23, 2026, 1 event: Portfolio demo event, today"');
     expect(html).toContain('<span class="as-day-count" aria-hidden="true">1</span>');
     expect(html).toContain('aria-label="Remove Portfolio demo event"');
   });

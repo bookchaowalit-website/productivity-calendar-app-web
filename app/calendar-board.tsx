@@ -209,7 +209,7 @@ export function Board({ today }: { today: string }) {
   function moveGridFocus(event: KeyboardEvent<HTMLButtonElement>, from: string) {
     // Ctrl/Cmd/Alt + Home/End (and other modified keys) stay with the browser, e.g. top or bottom of the page.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    const target = gridKeyTarget(event.key, from);
+    const target = gridKeyTarget(event.key, from, cursor);
     if (!target) return;
     event.preventDefault();
     if (!shown.has(target) || (event.key.startsWith("Page") && monthOf(target).month !== cursor.month)) setCursor(monthOf(target));
@@ -250,8 +250,11 @@ export function Board({ today }: { today: string }) {
                     const key = ymd(day);
                     const count = counts.get(key) ?? 0;
                     const isToday = key === today;
-                    const label = `${weekdayLabel(key)}, ${longDateLabel(key)}${count ? `, ${eventCountLabel(count)}` : ""}${isToday ? ", today" : ""}`;
                     const firstTitle = firstTitles.get(key);
+                    // The name carries the first event's title (shown on wide screens), so screen readers hear it
+                    // and voice control can call the day by what it shows.
+                    const events = count ? `, ${eventCountLabel(count)}${firstTitle ? `${count === 1 ? ":" : ", first:"} ${firstTitle}` : ""}` : "";
+                    const label = `${weekdayLabel(key)}, ${longDateLabel(key)}${events}${isToday ? ", today" : ""}`;
                     return (
                       <div role="gridcell" className="cal-cell" key={key} aria-selected={key === selected}>
                         <button
@@ -269,7 +272,7 @@ export function Board({ today }: { today: string }) {
                         >
                           <strong>{day.getDate()}</strong>
                           {count ? <span className="as-day-count" aria-hidden="true">{count}</span> : null}
-                          {/* Wide screens (961px+) also show the first event's title; the label already counts the events. */}
+                          {/* Wide screens (961px+) also show the first event's title; the label already names it. */}
                           {firstTitle ? <span className="as-day-title" aria-hidden="true">{firstTitle}</span> : null}
                         </button>
                       </div>

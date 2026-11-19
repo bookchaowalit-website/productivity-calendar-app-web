@@ -116,6 +116,13 @@ describe("gridKeyTarget and firstTitleByDate (review 2026-11-18)", () => {
     expect(gridKeyTarget("End", "2026-11-18")).toBe("2026-11-21");
     expect(gridKeyTarget("PageDown", "2027-01-31")).toBe("2027-02-28");
     expect(gridKeyTarget("PageUp", "2024-03-31")).toBe("2024-02-29");
+    // From a neighbouring month's day shown in the December 2026 grid, Page keys move from December.
+    const december = { year: 2026, month: 11 };
+    expect(gridKeyTarget("PageDown", "2026-11-30", december)).toBe("2027-01-30");
+    expect(gridKeyTarget("PageDown", "2027-01-01", december)).toBe("2027-01-01");
+    expect(gridKeyTarget("PageUp", "2027-01-02", december)).toBe("2026-11-02");
+    expect(gridKeyTarget("PageUp", "2026-11-31", december)).toBeNull();
+    expect(gridKeyTarget("PageDown", "2026-12-31", { year: 2027, month: 0 })).toBe("2027-02-28");
     expect(gridKeyTarget("Enter", "2026-11-18")).toBeNull();
     expect(gridKeyTarget("ArrowLeft", "bad")).toBeNull();
   });

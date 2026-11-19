@@ -123,14 +123,19 @@ export function firstTitleByDate(events: CalEvent[]): Map<string, string> {
  * week, Home/End to the start/end of the week (Sunday-Saturday, as drawn), PageUp/PageDown by a month
  * (the day is clamped, so Jan 31 + 1 month is Feb 28). Null for any other key.
  */
-export function gridKeyTarget(key: string, from: string): string | null {
+/**
+ * `shown` is the month on screen: Page Up/Down move one month from it (not from the focused day, which
+ * may be a leading or trailing day of a neighbouring month), keeping the day number or the month's last day.
+ */
+export function gridKeyTarget(key: string, from: string, shown?: Month): string | null {
   const date = parseYmd(from);
   if (!date) return null;
   const [y, m, d] = [date.getFullYear(), date.getMonth(), date.getDate()];
   const byDays = (n: number) => ymd(new Date(y, m, d + n, 12));
   const byMonths = (n: number) => {
-    const last = new Date(y, m + n + 1, 0, 12).getDate();
-    return ymd(new Date(y, m + n, Math.min(d, last), 12));
+    const [baseYear, baseMonth] = shown ? [shown.year, shown.month] : [y, m];
+    const last = new Date(baseYear, baseMonth + n + 1, 0, 12).getDate();
+    return ymd(new Date(baseYear, baseMonth + n, Math.min(d, last), 12));
   };
   switch (key) {
     case "ArrowLeft": return byDays(-1);

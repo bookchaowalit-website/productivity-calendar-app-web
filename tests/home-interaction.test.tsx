@@ -57,7 +57,7 @@ describe("month and day selection", () => {
     expect($("#day-heading")!.textContent).toBe("Wednesday");
     expect(rows()).toEqual(["Portfolio demo event"]);
     expect(day("November 18, 2026").getAttribute("aria-pressed")).toBe("true");
-    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("Wednesday, November 18, 2026, 1 event, today");
+    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("Wednesday, November 18, 2026, 1 event: Portfolio demo event, today");
     expect([...host.querySelectorAll(".as-foot a")].map((a) => a.getAttribute("href"))).toContain("https://bookchaowalit.com/");
   });
 
@@ -118,7 +118,7 @@ describe("adding", () => {
     expect(rows()).toEqual(["Dentist"]);
     expect($(".as-panel .as-row p")!.textContent).toBe("Bring the card");
     expect(stored()!.map((e) => [e.date, e.title, e.notes])).toEqual([["2026-11-18", "Portfolio demo event", "Click a day to add more."], ["2026-11-20", "Dentist", "Bring the card"]]);
-    expect(day("November 20, 2026").getAttribute("aria-label")).toBe("Friday, November 20, 2026, 1 event");
+    expect(day("November 20, 2026").getAttribute("aria-label")).toBe("Friday, November 20, 2026, 1 event: Dentist");
     expect(document.activeElement).toBe(field("Event title"));
     expect(field("Event title").value).toBe("");
     expect(host.textContent).toContain("Added “Dentist” on November 20, 2026. 1 event that day.");
@@ -438,7 +438,7 @@ describe("review fixes (Codex round 2)", () => {
 
 describe("review fixes (Codex round 3)", () => {
   it("day buttons name the weekday, the date, the count and today", () => {
-    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("Wednesday, November 18, 2026, 1 event, today");
+    expect(day("November 18, 2026").getAttribute("aria-label")).toBe("Wednesday, November 18, 2026, 1 event: Portfolio demo event, today");
     expect(day("November 21, 2026").getAttribute("aria-label")).toBe("Saturday, November 21, 2026");
   });
 
@@ -493,6 +493,17 @@ describe("review fixes (Codex round 4)", () => {
 describe("review 2026-11-18", () => {
   const key = (el: Element, k: string) => act(() => { el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true })); });
   const tabStops = () => [...host.querySelectorAll<HTMLElement>(".as-day")].filter((d) => d.tabIndex === 0).map((d) => d.dataset.date);
+
+  it("Page Up/Down move from the month shown, also from a neighbouring month's day in the grid", () => {
+    const trailing = host.querySelector<HTMLButtonElement>('.as-day[data-date="2026-12-05"]')!; // in November's last row
+    trailing.focus();
+    key(trailing, "PageDown");
+    expect($("h1")!.textContent).toBe("December 2026");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-12-05");
+    key(document.activeElement!, "PageUp");
+    expect($("h1")!.textContent).toBe("November 2026");
+    expect(document.activeElement?.getAttribute("data-date")).toBe("2026-11-05");
+  });
 
   it("the month grid has one Tab stop; arrows, Home/End and PageUp/PageDown move focus, Enter selects", () => {
     expect(tabStops()).toEqual(["2026-11-18"]);
