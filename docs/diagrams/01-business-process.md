@@ -1,6 +1,6 @@
 # 01 — Business process (As-Is / To-Be)
 
-productivity-calendar-app-web (Calendar Board) คือปฏิทินรายเดือนฝั่งเบราว์เซอร์ที่ให้ผู้ใช้เลือกวัน เพิ่ม/ลบกิจกรรม (มี Undo) และเก็บใน `localStorage` ของเครื่องตัวเองเท่านั้น ไม่มีการซิงก์หรือแชร์ มี `/api/mcp` แบบ stateless ที่ตอบเฉพาะตารางเดือน (`month_grid`) ไม่มีกิจกรรมของผู้ใช้
+productivity-calendar-app-web (Calendar Board) คือปฏิทินรายเดือนฝั่งเบราว์เซอร์ที่ให้ผู้ใช้เลือกวัน เพิ่ม/ลบกิจกรรม (มี Undo) และเก็บใน `localStorage` ของเครื่องตัวเองเท่านั้น ไม่มีการซิงก์หรือแชร์ (รวมถึงระหว่างแท็บที่เปิดอยู่) มี `/api/mcp` แบบ stateless ที่ตอบเฉพาะตารางเดือน (`month_grid`) ไม่มีกิจกรรมของผู้ใช้
 
 Last reviewed: 2026-11-28 · commit `d7d9a03`
 
@@ -19,9 +19,11 @@ flowchart LR
   KEEP --> PICK
   PICK --> ADD["add event: title required (trimmed), notes optional"]
   ADD -->|"blank title"| NOADD["nothing added, Save disabled"]
-  ADD -->|ok| SAVE["setItem localStorage + storage event to other tabs"]
-  PICK --> REM["remove event, Undo toast for 6 s"]
+  ADD -->|ok| SAVE["setItem localStorage; other open tabs are not updated"]
+  PICK --> REM["remove event, Undo toast: 6 s countdown, paused while hovered or focused"]
   REM --> SAVE
+  REM -->|"Undo pressed"| RESTORE["restore all removed events in the undoable set"]
+  RESTORE --> SAVE
   SAVE -->|"storage blocked or full"| MEM["kept in memory for this page view"]
   MCP["POST /api/mcp"] --> TOOL["JSON-RPC initialize, tools/list, tools/call month_grid(year, month)"]
   TOOL -->|"bad JSON, unknown method or tool, bad year or month"| E["400 JSON-RPC error"]
@@ -31,6 +33,8 @@ Sources: `app/page.tsx`, `app/calendar-board.tsx`, `lib/calendar.ts`, `lib/use-t
 
 ข้อเท็จจริงจากโค้ด:
 
+- แท็บที่เปิดอยู่พร้อมกันไม่ sync กัน: hook เก็บแคชต่อแท็บและไม่ฟัง `storage` event แท็บที่เห็นข้อมูลเก่าอาจเขียนทับของอีกแท็บ
+- ข้อมูลกิจกรรมไม่ออกจากเบราว์เซอร์ ยกเว้นรายงาน error ไป Sentry เมื่อมี `NEXT_PUBLIC_SENTRY_DSN` (`beforeSend` ลบ request, user, breadcrumbs, extra, ตัด query/hash ใน URL และข้อความ error, ไม่ส่ง performance transaction)
 - ไม่มีการแก้ไขกิจกรรมเดิม ไม่มีเวลา การแจ้งเตือน หรือ recurrence; ล้าง site data แล้วกิจกรรมหาย
 - เซิร์ฟเวอร์ไม่มีกิจกรรมของผู้ใช้ เพราะข้อมูลอยู่ในเบราว์เซอร์; `month_grid` ใช้ logic ตารางเดือนเดียวกับหน้าเว็บ
 - `PRODUCT.md` ระบุว่า Vercel project ผูก Git แล้ว (push ไป main = deploy) และตั้ง Sentry DSN แล้ว ณ 2026-11; ยืนยันจากโค้ดไม่ได้ [ต้องยืนยัน]
